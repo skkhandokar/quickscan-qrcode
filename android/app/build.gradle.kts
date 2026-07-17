@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "com.skkhandokar.quickscan" // Kotlin-এ সবসময় ডাবল কোটেশন ("") হবে
     compileSdk = flutter.compileSdkVersion
- 
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
