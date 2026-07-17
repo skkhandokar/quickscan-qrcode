@@ -467,7 +467,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _importBackup() async {
     try {
       // ফোন বা কম্পিউটার মেমোরি থেকে শুধুমাত্র .csv ফাইল সিলেক্ট করার অপশন
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
       );
