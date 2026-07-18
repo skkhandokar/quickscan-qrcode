@@ -24,7 +24,7 @@ tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-// সাবপ্রজেক্টের missing namespace সমস্যা দূর করার জন্য নিরাপদ ও কার্যকরী কোড
+// ১. সাবপ্রজেক্টের missing namespace সমস্যা দূর করার জন্য নিরাপদ ও কার্যকরী কোড
 subprojects {
     val configureNamespace = {
         val android = project.extensions.findByName("android")
@@ -54,7 +54,7 @@ subprojects {
     }
 }
 
-// wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউটের এরর বাইপাস করার সোয়াপ ট্রিক
+// ২. wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউটের এরর বাইপাস করার সোয়াপ ট্রিক
 subprojects {
     val currentProject = this
     if (currentProject.name == "wifi_connector") {
@@ -78,56 +78,45 @@ subprojects {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ওল্ড প্লাগইনের compileSdk কনফ্লিক্ট এবং JVM Target মিটিয়ে ফেলার চূড়ান্ত রিফ্লেকশন-ফ্রি মেথড
+// ৩. জাভা, কোটলিন এবং ওল্ড প্লাগইনের compileSdk কনফ্লিক্ট মেটানোর চূড়ান্ত ফুলপ্রুফ মেথড
 subprojects {
-    // অ্যান্ড্রয়েড প্লাগইন কনফিগারেশনে সরাসরি হুক করা
-    plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
-        // extensions এর মাধ্যমে সরাসরি ডাইনামিক কনফিগারেশন টাইপ চেক করা
-        extensions.configure<com.android.build.gradle.BaseExtension>("android") {
-            // ডিরেক্ট রিফ্লেকশন ছাড়া প্রোপার্টি অ্যাসাইনমেন্ট (জাভা ১৭ কম্পাইলের জন্য ৩৪ এ লক)
-            compileSdkVersion(34)
-            defaultConfig {
-                targetSdkVersion(34)
-            }
-            
-            // জাভা কমপ্যাটিবিলিটি ১৭ সেটআপ
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
+    val currentProject = this
+    
+    // গ্রেডল প্লাগইন লোড হওয়ার সাথে সাথেই আমরা ডাইনামিক্যালি রুট ভ্যালু ওভাররাইড করব (afterEvaluate এর আগে)
+    currentProject.plugins.any { plugin ->
+        if (plugin.javaClass.name.startsWith("com.android.build")) {
+            try {
+                // সরাসরি অ্যান্ড্রয়েড এক্সটেনশন অবজেক্টটি বের করা
+                val androidExt = currentProject.extensions.findByName("android")
+                if (androidExt != null) {
+                    // জাভা রিফ্লেকশন দিয়ে নো-লক ট্রিক ব্যবহার করে সোর্স লেভেল এলিভেট করা
+                    val methods = androidExt.javaClass.methods
+                    
+                    // compileSdkVersion এবং compileSdk দুই ফরম্যাটেই ৩৪ সেট করা হচ্ছে
+                    methods.find { it.name == "setCompileSdkVersion" && it.parameterTypes.size == 1 && it.parameterTypes[0] == Int::class.java }?.invoke(androidExt, 34)
+                    methods.find { it.name == "setCompileSdk" && it.parameterTypes.size == 1 && it.parameterTypes[0] == Int::class.java }?.invoke(androidExt, 34)
+
+                    // defaultConfig এর targetSdkVersion আপডেট করা
+                    val getDefaultConfig = androidExt.javaClass.getMethod("getDefaultConfig")
+                    val defaultConfigObj = getDefaultConfig.invoke(androidExt)
+                    defaultConfigObj.javaClass.methods.find { it.name == "setTargetSdkVersion" }?.invoke(defaultConfigObj, 34)
+                    defaultConfigObj.javaClass.methods.find { it.name == "setTargetSdk" }?.invoke(defaultConfigObj, 34)
+
+                    // জাভা ১৭ কম্পাইলেশন এনাবল করা
+                    val getCompileOptions = androidExt.javaClass.getMethod("getCompileOptions")
+                    val compileOptionsObj = getCompileOptions.invoke(androidExt)
+                    compileOptionsObj.javaClass.getMethod("setSourceCompatibility", Any::class.java).invoke(compileOptionsObj, JavaVersion.VERSION_17)
+                    compileOptionsObj.javaClass.getMethod("setTargetCompatibility", Any::class.java).invoke(compileOptionsObj, JavaVersion.VERSION_17)
+                }
+            } catch (ignored: Exception) {}
         }
+        false // লুপটি স্বাভাবিক রাখতে false রিটার্ন
     }
 
-    // কোটলিন টাস্কগুলোর জন্য রানটাইম স্ট্রিং প্রোপার্টি দিয়ে JVM Target 17 ফিক্স
+    // কোটলিন টাস্কগুলোর জন্য রানটাইম প্রোপার্টি দিয়ে JVM Target 17 ফিক্স (কোনো নির্দিষ্ট ক্লাস ইমপোর্ট ছাড়া)
     tasks.configureEach {
         if (name.contains("compile", ignoreCase = true) && name.contains("kotlin", ignoreCase = true)) {
             try {
-                // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
                 val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
                 val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
                 val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
@@ -138,17 +127,9 @@ subprojects {
                 setMethod.invoke(jvmTargetObj, jvmTargetValue)
             } catch (e: Exception) {
                 try {
-                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড
                     val kotlinOptions = this.javaClass.getMethod("getKotlinOptions").invoke(this)
                     kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java).invoke(kotlinOptions, "17")
-                } catch (ignored: Exception) {
-                    try {
-                        val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
-                        val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
-                        val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
-                        jvmTargetObj.javaClass.getMethod("set", String::class.java).invoke(jvmTargetObj, "17")
-                    } catch (lastHope: Exception) {}
-                }
+                } catch (ignored: Exception) {}
             }
         }
     }
