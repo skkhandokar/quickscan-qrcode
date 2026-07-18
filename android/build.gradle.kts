@@ -57,17 +57,20 @@ subprojects {
 
 
 
-
 subprojects {
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            project.android {
-                if (namespace == null) {
+    afterEvaluate {
+        val currentProject = this
+        if (currentProject.hasProperty("android")) {
+            val androidExtension = currentProject.extensions.findByName("android")
+            if (androidExtension != null) {
+                // wifi_connector প্লাগইনের জন্য নেমস্পেস ফোর্স ওভাররাইড
+                if (currentProject.name == "wifi_connector") {
                     try {
-                        if (project.name == "wifi_connector") {
-                            namespace = "com.wonjerry.wifi_connector"
-                        }
-                    } catch (Exception ignored) {}
+                        val dslNamespace = androidExtension.javaClass.getMethod("setNamespace", String::class.java)
+                        dslNamespace.invoke(androidExtension, "com.wonjerry.wifi_connector")
+                    } catch (e: Exception) {
+                        // অন্য কোনো রিফ্লেকশন এরর হ্যান্ডেল করার জন্য
+                    }
                 }
             }
         }
