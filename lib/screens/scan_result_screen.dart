@@ -1172,7 +1172,6 @@
 
 
 
-
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -1326,8 +1325,8 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         }
 
         final newContact = fc.Contact(
-          name: fc.Name(given: name),
-          phones: phone.isNotEmpty ? [fc.Phone(phone, label: fc.PhoneLabel.mobile)] : [],
+          name: fc.Name(first: name),
+          phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.PhoneLabel.mobile)] : [],
         );
         
         await fc.FlutterContacts.insertContact(newContact);
@@ -1730,7 +1729,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return InkWell(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MinAxisSize.min,
+        mainAxisSize: MainAxisSize.min, // এখানে MainAxisSize ফিক্স করা হয়েছে
         children: [
           Icon(icon, color: Colors.blue, size: 36),
           const SizedBox(height: 8),

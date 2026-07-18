@@ -124,15 +124,15 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     if (await fc.FlutterContacts.requestPermission()) {
       try {
         final newContact = fc.Contact(
-          name: fc.Name(given: _profileData['name'] ?? ''),
+          name: fc.Name(first: _profileData['name'] ?? ''),
           phones: _profileData['phone'] != null && _profileData['phone']!.isNotEmpty
-              ? [fc.Phone(_profileData['phone']!, label: fc.PhoneLabel.mobile)]
+              ? [fc.Phone(number: _profileData['phone']!, label: fc.PhoneLabel.mobile)]
               : [],
           emails: _profileData['email'] != null && _profileData['email']!.isNotEmpty
-              ? [fc.Email(_profileData['email']!, label: fc.EmailLabel.home)]
+              ? [fc.Email(address: _profileData['email']!, label: fc.EmailLabel.home)]
               : [],
           addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
-              ? [fc.Address(_profileData['address']!, label: fc.AddressLabel.work)]
+              ? [fc.Address(address: _profileData['address']!, label: fc.AddressLabel.work)]
               : [],
           organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
               ? [fc.Organization(company: _profileData['org']!)]
