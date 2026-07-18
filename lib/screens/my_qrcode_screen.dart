@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:contacts_service/contacts_service.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as fc; 
 import 'package:permission_handler/permission_handler.dart';
 import '../widgets/custom_drawer.dart';
 import '../services/history_service.dart';
@@ -23,7 +23,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
   bool _hasProfile = false;
   bool _isEditing = false;
 
-  // ফর্ম কন্ট্রোলারসমূহ
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _orgController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -52,7 +51,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     super.dispose();
   }
 
-  // প্রোফাইল লোড লজিক
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
     final data = await HistoryService.getUserProfile();
@@ -72,7 +70,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     setState(() => _isLoading = false);
   }
 
-  // প্রোফাইল সেভ করার লজিক
   Future<void> _saveProfile() async {
     if (_nameController.text.isEmpty &&
         _orgController.text.isEmpty &&
@@ -108,7 +105,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     );
   }
 
-  // vCard ফরম্যাট তৈরি (যা কিউআর কোড স্ক্যান করলে কন্ট্যাক্ট হিসেবে রিড করা যাবে)
   String _generateVCardData() {
     return "BEGIN:VCARD\n"
         "VERSION:3.0\n"
@@ -122,39 +118,73 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
         "END:VCARD";
   }
 
-  // ১. ফোন বুক বা কন্ট্যাক্টে যুক্ত করার লজিক
   Future<void> _addContact() async {
     if (_profileData['name'] == null || _profileData['name']!.isEmpty) return;
 
-    final PermissionStatus permission = await Permission.contacts.request();
-    if (permission.isGranted) {
+    if (await fc.requestPermission()) {
       try {
-        Contact newContact = Contact(
-          givenName: _profileData['name'],
-          company: _profileData['org'],
-          jobTitle: _profileData['bio'], 
-          phones: [Item(label: "mobile", value: _profileData['phone'])],
-          emails: [Item(label: "personal", value: _profileData['email'])],
-          postalAddresses: [PostalAddress(street: _profileData['address'])],
-        );
-        await ContactsService.addContact(newContact);
+        final newContact = fc.Contact();
+        newContact.name.given = _profileData['name'] ?? '';
+        
+        if (_profileData['phone'] != null && _profileData['phone']!.isNotEmpty) {
+          final phoneObj = fc.Phone();
+          phoneObj.number = _profileData['phone']!;
+          phoneObj.label = fc.PhoneLabel.mobile;
+          newContact.phones = [phoneObj];
+        }
+
+        if (_profileData['email'] != null && _profileData['email']!.isNotEmpty) {
+          final emailObj = fc.Email();
+          emailObj.address = _profileData['email']!;
+          emailObj.label = fc.EmailLabel.home;
+          newContact.emails = [emailObj];
+        }
+
+        if (_profileData['address'] != null && _profileData['address']!.isNotEmpty) {
+          final addressObj = fc.Address();
+          addressObj.street = _profileData['address']!;
+          addressObj.label = fc.AddressLabel.work;
+          newContact.addresses = [addressObj];
+        }
+
+        if (_profileData['org'] != null && _profileData['org']!.isNotEmpty) {
+          final orgObj = fc.Organization();
+          orgObj.company = _profileData['org']!;
+          newContact.organizations = [orgObj];
+        }
+
+        if (_profileData['bio'] != null && _profileData['bio']!.isNotEmpty) {
+          final noteObj = fc.Note();
+          noteObj.note = _profileData['bio']!;
+          newContact.notes = [noteObj];
+        }
+        
+        await fc.insertContact(newContact);
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contact added successfully to your phone!')),
+          const SnackBar(
+            backgroundColor: Colors.green,
+            content: Text('Contact added successfully to your phone! 🎉'),
+          ),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to add contact: $e')),
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('Failed to add contact: $e'),
+          ),
         );
       }
     } else {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Permission denied to access contacts.')),
       );
     }
   }
 
-  // ২. ম্যাপ ওপেন করার লজিক
   Future<void> _openMap() async {
     final String address = _profileData['address'] ?? '';
     if (address.isEmpty) return;
@@ -170,7 +200,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     }
   }
 
-  // ৩. কল করার লজিক
   Future<void> _makeCall() async {
     final String phone = _profileData['phone'] ?? '';
     if (phone.isEmpty) return;
@@ -180,7 +209,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     }
   }
 
-  // ৪. জিমেইল/ইমেইল ওপেন করার লজিক
   Future<void> _sendEmail() async {
     final String email = _profileData['email'] ?? '';
     if (email.isEmpty) return;
@@ -190,7 +218,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     }
   }
 
-  // ৫. প্রোফাইল টেক্সট কপি করার লজিক
   void _copyProfile() {
     final String profileText = "My Profile Details:\n"
         "Name: ${_profileData['name']}\n"
@@ -206,9 +233,7 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     );
   }
 
-  // ৬. কিউআর কোডের র ডেটা সেভ করার লজিক
   void _saveProfileData() {
-    // এখানে কিউআর কোডের vCard ডেটাটি ক্লিপবোর্ডে কপি হবে এবং ইউজারকে জানানো হবে কীভাবে সেভ করবেন। 
     final String rawData = _generateVCardData();
     Clipboard.setData(ClipboardData(text: rawData));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -216,7 +241,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     );
   }
 
-  // ৭. শেয়ার করার লজিক
   void _shareProfile() {
     final String shareText = "My Digital Profile:\n"
         "Name: ${_profileData['name']}\n"
@@ -290,7 +314,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     );
   }
 
-  // প্রোফাইল এন্ট্রি ফর্ম উইজেট
   Widget _buildProfileForm() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
@@ -355,14 +378,12 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
     );
   }
 
-  // জেনারেটেড ডিজিটাল কার্ড প্রিভিউ বক্স (হুবহু স্ক্রিনশটের মতো)
   Widget _buildDigitalCard() {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // কন্ট্যাক্ট হেডার ডিটেইলস
           const Text('Contact', style: TextStyle(color: Colors.white30, fontSize: 13, fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
           Text(
@@ -384,7 +405,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
             ),
           const SizedBox(height: 30),
 
-          // স্ক্রিনশটের মতো অ্যাকশন বাটন গ্রিড
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -412,7 +432,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
           ),
           const SizedBox(height: 25),
           
-          // শেয়ার, কপি এবং সেভ বাটন রো (Row)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -436,7 +455,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
           
           const SizedBox(height: 40),
 
-          // সেন্ট্রাল কিউআর কোড রেন্ডার উইজেট
           Center(
             child: Container(
               color: Colors.white,
