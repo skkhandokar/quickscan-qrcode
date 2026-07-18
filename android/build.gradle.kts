@@ -1,7 +1,7 @@
 allprojects {
     repositories {
         google()
-        mavenCentral() // এখানে টাইপো ঠিক করে mavenCentral() করা হয়েছে
+        mavenCentral()
     }
 }
 
@@ -54,29 +54,22 @@ subprojects {
     }
 }
 
-// wifi_connector এর Manifest Incorrect Package এরর বাইপাস করার জন্য চূড়ান্ত রুলস
+// wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউট রানটাইমে মুছে দেওয়ার কিলার ট্রিক
 subprojects {
     val currentProject = this
-    
-    // অ্যান্ড্রয়েড বেস প্লাগইন লোড হওয়ার সাথে সাথে এটি এক্সিকিউট হবে
-    currentProject.plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
-        
-        // আমাদের টার্গেটেড প্লাগইনটি চেক করা
-        if (currentProject.name == "wifi_connector") {
-            
-            // লাইব্রেরি ম্যানিফেস্ট প্রসেস করার টাস্কটি খুঁজে বের করা
-            currentProject.tasks.withType(com.android.build.gradle.tasks.ProcessLibraryManifest::class.java).configureEach {
-                try {
-                    // গ্রেডল ৮+ এর কড়া গাইডলাইন চেকটিকে ফোর্সফুলি বাইপাস করা
-                    val bypassField = this.javaClass.getMethod("setIsBypassNamespaceCheck", Boolean::class.java)
-                    bypassField.invoke(this, true)
-                } catch (e: Exception) {
-                    try {
-                        // গ্রেডলের ইন্টারনাল খেলনা ফিল্ডের ভিন্ন নামের জন্য অল্টারনেটিভ ব্যাকআপ ট্রিক
-                        val alternativeField = this.javaClass.getField("isBypassNamespaceCheck")
-                        alternativeField.set(this, true)
-                    } catch (ignored: Exception) {
-                        // কোনো কারণে মেথড ম্যাচ না করলে ক্র্যাশ এড়াতে
+    if (currentProject.name == "wifi_connector") {
+        // ম্যানিফেস্ট প্রসেস হওয়ার ঠিক আগের মুহূর্তে এই টাস্কটি ট্রিগার হবে
+        currentProject.tasks.all {
+            if (name.contains("manifest", ignoreCase = true)) {
+                doFirst {
+                    val manifestFile = currentProject.file("src/main/AndroidManifest.xml")
+                    if (manifestFile.exists()) {
+                        var content = manifestFile.readText()
+                        // যদি ফাইলে package অ্যাট্রিবিউটটি থেকে থাকে তবে তাRegex দিয়ে সম্পূর্ণ রিমুভ করে দেওয়া হবে
+                        if (content.contains("package=")) {
+                            content = content.replace(Regex("""package="[^"]*""""), "")
+                            manifestFile.writeText(content)
+                        }
                     }
                 }
             }
