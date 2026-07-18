@@ -78,52 +78,56 @@ subprojects {
     }
 }
 
-// জাভা, কোটলিন কমপ্যাটিবিলিটি এবং ওল্ড প্লাগইনের compileSdk কনф্লিক্ট দূর করার টাইপ-সেফ মেথড
-subprojects {
-    // ১. ওল্ড প্লাগইনগুলোর compileSdkVersion এবং targetSdkVersion রানটাইমে ওভাররাইড করা
-    plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
-        val android = extensions.findByName("android")
-        if (android != null) {
-            try {
-                // সরাসরি জাভা রিফ্লেকশন ব্যবহার করে সেট করা, যাতে গ্রেডল তার নিজস্ব মেথডের সাথে গুলিয়ে না ফেলে
-                try {
-                    val setCompileSdkVersionMethod = android.javaClass.getMethod("setCompileSdkVersion", Int::class.java)
-                    setCompileSdkVersionMethod.invoke(android, 34)
-                } catch (e: Exception) {
-                    try {
-                        val setCompileSdkMethod = android.javaClass.getMethod("setCompileSdk", Int::class.java)
-                        setCompileSdkMethod.invoke(android, 34)
-                    } catch (ignored: Exception) {}
-                }
-                
-                // targetSdkVersion ৩৪ এ লক করা
-                val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
-                try {
-                    defaultConfig.javaClass.getMethod("setTargetSdkVersion", Any::class.java).invoke(defaultConfig, 34)
-                } catch (e: Exception) {
-                    try {
-                        defaultConfig.javaClass.getMethod("setTargetSdk", Int::class.java).invoke(defaultConfig, 34)
-                    } catch (ignored: Exception) {}
-                }
-            } catch (e: Exception) {
-                // মেথড ইনভোকেশন ফেইল করলে সেফলি এড়িয়ে যাবে
-            }
 
-            // ২. জাভা কমপ্যাটিবিলিটি ১৭ সেট করা
-            try {
-                val compileOptions = android.javaClass.getMethod("getCompileOptions").invoke(android)
-                compileOptions.javaClass.getMethod("setSourceCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
-                compileOptions.javaClass.getMethod("setTargetCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
-            } catch (e: Exception) {
-                // ব্যাকআপ ট্রিক
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ওল্ড প্লাগইনের compileSdk কনফ্লিক্ট এবং JVM Target মিটিয়ে ফেলার চূড়ান্ত রিফ্লেকশন-ফ্রি মেথড
+subprojects {
+    // অ্যান্ড্রয়েড প্লাগইন কনফিগারেশনে সরাসরি হুক করা
+    plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
+        // extensions এর মাধ্যমে সরাসরি ডাইনামিক কনফিগারেশন টাইপ চেক করা
+        extensions.configure<com.android.build.gradle.BaseExtension>("android") {
+            // ডিরেক্ট রিফ্লেকশন ছাড়া প্রোপার্টি অ্যাসাইনমেন্ট (জাভা ১৭ কম্পাইলের জন্য ৩৪ এ লক)
+            compileSdkVersion(34)
+            defaultConfig {
+                targetSdkVersion(34)
+            }
+            
+            // জাভা কমপ্যাটিবিলিটি ১৭ সেটআপ
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
             }
         }
     }
 
-    // ৩. কোটলিন টাস্কগুলোর জন্য রানটাইম স্ট্রিং প্রোপার্টি দিয়ে JVM Target 17 ফিক্স
+    // কোটলিন টাস্কগুলোর জন্য রানটাইম স্ট্রিং প্রোপার্টি দিয়ে JVM Target 17 ফিক্স
     tasks.configureEach {
         if (name.contains("compile", ignoreCase = true) && name.contains("kotlin", ignoreCase = true)) {
             try {
+                // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
                 val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
                 val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
                 val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
@@ -134,7 +138,7 @@ subprojects {
                 setMethod.invoke(jvmTargetObj, jvmTargetValue)
             } catch (e: Exception) {
                 try {
-                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড (Groovy টাইপ এড়িয়ে সরাসরি মেথড কল)
+                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড
                     val kotlinOptions = this.javaClass.getMethod("getKotlinOptions").invoke(this)
                     kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java).invoke(kotlinOptions, "17")
                 } catch (ignored: Exception) {
