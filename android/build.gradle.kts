@@ -54,23 +54,26 @@ subprojects {
     }
 }
 
-// wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউট রানটাইমে মুছে দেওয়ার কিলার ট্রিক
+// ওল্ড প্লাগইনের ম্যানিফেস্ট ফাইলটিকে আমাদের কাস্টম ফ্রেশ ফাইল দিয়ে সোয়াপ করার চূড়ান্ত ট্রিক
 subprojects {
     val currentProject = this
     if (currentProject.name == "wifi_connector") {
-        // ম্যানিফেস্ট প্রসেস হওয়ার ঠিক আগের মুহূর্তে এই টাস্কটি ট্রিগার হবে
-        currentProject.tasks.all {
-            if (name.contains("manifest", ignoreCase = true)) {
-                doFirst {
-                    val manifestFile = currentProject.file("src/main/AndroidManifest.xml")
-                    if (manifestFile.exists()) {
-                        var content = manifestFile.readText()
-                        // যদি ফাইলে package অ্যাট্রিবিউটটি থেকে থাকে তবে তাRegex দিয়ে সম্পূর্ণ রিমুভ করে দেওয়া হবে
-                        if (content.contains("package=")) {
-                            content = content.replace(Regex("""package="[^"]*""""), "")
-                            manifestFile.writeText(content)
-                        }
+        plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
+            val androidExtension = currentProject.extensions.findByName("android")
+            if (androidExtension != null) {
+                try {
+                    // ডাইরেক্ট প্লাগইনের সোর্স সেট ওভাররাইড করা
+                    val sourceSets = androidExtension.javaClass.getMethod("getSourceSets").invoke(androidExtension)
+                    val mainSourceSet = sourceSets.javaClass.getMethod("getByName", String::class.java).invoke(sourceSets, "main")
+                    val manifest = mainSourceSet.javaClass.getMethod("getManifest").invoke(mainSourceSet)
+                    
+                    // আমাদের তৈরি করা কাস্টম ফাইলের পাথ ধরিয়ে দেওয়া
+                    val customManifestFile = rootProject.file("app/wifi_connector_manifest/AndroidManifest.xml")
+                    if (customManifestFile.exists()) {
+                        manifest.javaClass.getMethod("srcFile", Any::class.java).invoke(manifest, customManifestFile)
                     }
+                } catch (e: Exception) {
+                    // ব্যাকআপ হ্যান্ডলিং
                 }
             }
         }
