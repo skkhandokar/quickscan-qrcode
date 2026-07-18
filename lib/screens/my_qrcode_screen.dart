@@ -121,31 +121,29 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
   Future<void> _addContact() async {
     if (_profileData['name'] == null || _profileData['name']!.isEmpty) return;
 
-    // fc.FlutterContacts অফিশিয়াল v2 পারমিশন এপিআই
     final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.readWrite);
     if (status == fc.PermissionStatus.granted) {
       try {
         final newContact = fc.Contact(
           name: fc.Name(first: _profileData['name'] ?? ''),
-          // fc.Label র‍্যাপার এবং প্রোপার্টি নেম ফিক্স করা হয়েছে
           phones: _profileData['phone'] != null && _profileData['phone']!.isNotEmpty
               ? [fc.Phone(number: _profileData['phone']!, label: fc.Label(fc.PhoneLabel.mobile))]
               : [],
           emails: _profileData['email'] != null && _profileData['email']!.isNotEmpty
               ? [fc.Email(address: _profileData['email']!, label: fc.Label(fc.EmailLabel.home))]
               : [],
+          // v2 কনস্ট্রাক্টরের সঠিক প্যারামিটার 'street' এবং 'companyName' সেট করা হলো
           addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
-              ? [fc.Address(address: _profileData['address']!, label: fc.Label(fc.AddressLabel.work))]
+              ? [fc.Address(street: _profileData['address']!, label: fc.Label(fc.AddressLabel.work))]
               : [],
           organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
-              ? [fc.Organization(company: _profileData['org']!)]
+              ? [fc.Organization(companyName: _profileData['org']!)]
               : [],
           notes: _profileData['bio'] != null && _profileData['bio']!.isNotEmpty
               ? [fc.Note(note: _profileData['bio']!)]
               : [],
         );
         
-        // v2 অফিশিয়াল ক্রিয়েট মেথড
         await fc.FlutterContacts.create(newContact);
 
         if (!mounted) return;
