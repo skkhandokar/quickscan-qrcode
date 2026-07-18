@@ -112,16 +112,17 @@ subprojects {
         false
     }
 
-    // google_mlkit_commons সহ সব প্লাগইনের Java এবং Kotlin JVM Target সম্পূর্ণ সিঙ্ক করার জন্য Java Toolchain হুক
-    currentProject.plugins.withType(org.gradle.api.plugins.JavaPlugin::class.java) {
-        extensions.configure<org.gradle.api.plugins.JavaPluginExtension>("java") {
-            toolchain {
-                languageVersion.set(JavaLanguageVersion.of(17))
-            }
+    // google_mlkit_commons সহ সব প্লাগইনের Java এবং Kotlin JVM Target সম্পূর্ণ সিঙ্ক করার জন্য টাইপ-সেফ Java Toolchain হুক
+    currentProject.afterEvaluate {
+        if (currentProject.plugins.hasPlugin("java") || currentProject.extensions.findByName("java") != null) {
+            try {
+                val javaExt = currentProject.extensions.findByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
+                javaExt?.toolchain?.languageVersion?.set(org.gradle.api.JavaVersion.VERSION_17.let { org.gradle.jvm.toolchain.JavaLanguageVersion.of(17) })
+            } catch (ignored: Exception) {}
         }
     }
 
-    // কোটলিন টাস্ক কম্পাইলার অপশন সিঙ্ক্রোনাইজেশন (Java এবং Kotlin দুটিকেই জেন্যুইন ১৭ সংস্করণে লক করা)
+    // কোটলিন এবং জাভা কম্পাইলার টাস্কগুলোর জন্য রানটাইম প্রোপার্টি দিয়ে ফাইনাল ব্যাকআপ ইন্জেকশন
     tasks.configureEach {
         if (name.contains("compile", ignoreCase = true)) {
             if (name.contains("kotlin", ignoreCase = true)) {
@@ -141,12 +142,12 @@ subprojects {
                     } catch (ignored: Exception) {}
                 }
             } else if (name.contains("java", ignoreCase = true)) {
-                // জাভা কম্পাইলার টাস্কগুলোর (যেমন compileDebugJavaWithJavac) টার্গেট ফোর্সফুলি ১৭ করা
                 try {
-                    val setTargetCompatibilityMethod = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
-                    setTargetCompatibilityMethod.invoke(this, "17")
-                    val setSourceCompatibilityMethod = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
-                    setSourceCompatibilityMethod.invoke(this, "17")
+                    // জাভা কম্পাইলার টাস্কগুলোর টার্গেট ও সোর্স কমপ্যাটিবিলিটি সরাসরি প্রোপার্টি লেভেলে ফিক্স করা
+                    val targetCompatField = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
+                    targetCompatField.invoke(this, "17")
+                    val sourceCompatField = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
+                    sourceCompatField.invoke(this, "17")
                 } catch (ignored: Exception) {}
             }
         }
