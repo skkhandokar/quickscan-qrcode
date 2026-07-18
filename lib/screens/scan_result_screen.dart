@@ -1178,7 +1178,6 @@
 
 
 
-
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -1320,7 +1319,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   }
 
   Future<void> _saveContactFromQR() async {
-    if (await fc.requestPermission()) {
+    // FlutterContacts v2 সংস্করণের অফিশিয়াল পারমিশন রিকোয়েস্ট লজিক
+    final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.readWrite);
+    if (status == fc.PermissionStatus.granted) {
       try {
         String name = "QR Contact";
         String phone = "";
@@ -1331,12 +1332,14 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           phone = widget.rawValue.split('TEL:')[1].split(';')[0];
         }
 
+        // v2-এর প্রোপার্টি অবজেক্ট এবং লেবেল ম্যাপিং ফিক্স
         final newContact = fc.Contact(
           name: fc.Name(first: name),
           phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))] : [],
         );
         
-        await fc.insertContact(newContact);
+        // v2 অফিশিয়াল ক্রিয়েট মেথড
+        await fc.FlutterContacts.create(newContact);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1715,9 +1718,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       buttons.add(_actionIconButton(icon: Icons.person_add_alt_1_rounded, label: 'Add contact', onTap: _saveContactFromQR));
     }
     else if (_isSMS) {
-      buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: _sendSMS(isMMS: false)));
+      // Void টাইপ এরর ফিক্স করতে Anonymous ফাংশন পাস করা হয়েছে
+      buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: () => _sendSMS(isMMS: false)));
       buttons.add(const SizedBox(width: 20));
-      buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: _sendSMS(isMMS: true)));
+      buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: () => _sendSMS(isMMS: true)));
     }
     else if (_isGeo || widget.rawValue.toLowerCase().contains('bangladesh') || widget.rawValue.toLowerCase().contains('dhaka')) {
       buttons.add(_actionIconButton(icon: Icons.location_on_rounded, label: 'Show Map', onTap: _openInMap));
