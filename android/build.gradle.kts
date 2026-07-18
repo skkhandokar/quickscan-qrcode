@@ -54,7 +54,7 @@ subprojects {
     }
 }
 
-// ওল্ড প্লাগইনের ম্যানিফেস্ট ফাইলটিকে আমাদের কাস্টম ফ্রেশ ফাইল দিয়ে সোয়াপ করার চূড়ান্ত ট্রিক
+// wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউটের এরর বাইপাস করার সোয়াপ ট্রিক
 subprojects {
     val currentProject = this
     if (currentProject.name == "wifi_connector") {
@@ -62,12 +62,10 @@ subprojects {
             val androidExtension = currentProject.extensions.findByName("android")
             if (androidExtension != null) {
                 try {
-                    // ডাইরেক্ট প্লাগইনের সোর্স সেট ওভাররাইড করা
                     val sourceSets = androidExtension.javaClass.getMethod("getSourceSets").invoke(androidExtension)
                     val mainSourceSet = sourceSets.javaClass.getMethod("getByName", String::class.java).invoke(sourceSets, "main")
                     val manifest = mainSourceSet.javaClass.getMethod("getManifest").invoke(mainSourceSet)
                     
-                    // আমাদের তৈরি করা কাস্টম ফাইলের পাথ ধরিয়ে দেওয়া
                     val customManifestFile = rootProject.file("app/wifi_connector_manifest/AndroidManifest.xml")
                     if (customManifestFile.exists()) {
                         manifest.javaClass.getMethod("srcFile", Any::class.java).invoke(manifest, customManifestFile)
@@ -80,25 +78,9 @@ subprojects {
     }
 }
 
-
-
-
-
-// সব সাব-প্রজেক্ট এবং প্লাগইনের জাভা ও কোটলিন কম্পাইলার টার্গেট ১৭-এ লক করার কোড
+// জাভা এবং কোটলিন টাস্কের JVM Target 17 ইনকনসিস্টেন্সি দূর করার ডাইরেক্ট রানটাইম প্রোপার্টি ওভাররাইড
 subprojects {
-    tasks.withType(org.jetbrains.kotlin.graphql.plugin.tasks.KotlinCompile::class.java).configureEach {
-        kotlinOptions {
-            jvmTarget = "17"
-        }
-    }
-    
-    // ব্যাকআপ হিসেবে অল্টারনেটিভ কোটলিন টাস্ক হ্যান্ডেল করার জন্য
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
-        kotlinOptions {
-            jvmTarget = "17"
-        }
-    }
-
+    // জাভা কমপ্যাটিবিলিটি ১৭ সেট করা
     plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
         val android = extensions.findByName("android")
         if (android != null) {
@@ -107,7 +89,33 @@ subprojects {
                 compileOptions::class.java.getMethod("setSourceCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
                 compileOptions::class.java.getMethod("setTargetCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
             } catch (e: Exception) {
-                // রিফ্লেকশন ব্যাকআপ হ্যান্ডলিং
+                // ব্যাকআপ ট্রিক
+            }
+        }
+    }
+
+    // কোটলিন কম্পাইলার অপশন কোনো নির্দিষ্ট ক্লাস লোড না করে সরাসরি কনফিগার করা
+    tasks.configureEach {
+        if (name.contains("compile", ignoreCase = true) && name.contains("kotlin", ignoreCase = true)) {
+            try {
+                // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
+                val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
+                val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
+                val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
+                val setMethod = jvmTargetObj.javaClass.getMethod("set", Any::class.java)
+                
+                val jvmTargetEnumClass = Class.forName("org.jetbrains.kotlin.gradle.dsl.JvmTarget")
+                val jvmTargetValue = jvmTargetEnumClass.getField("JVM_17").get(null)
+                setMethod.invoke(jvmTargetObj, jvmTargetValue)
+            } catch (e: Exception) {
+                try {
+                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড
+                    setProperty("kotlinOptions.jvmTarget", "17")
+                } catch (ignored: Exception) {
+                    try {
+                        setProperty("compilerOptions.jvmTarget", "17")
+                    } catch (lastHope: Exception) {}
+                }
             }
         }
     }
