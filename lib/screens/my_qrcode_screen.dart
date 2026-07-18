@@ -132,12 +132,11 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
           emails: _profileData['email'] != null && _profileData['email']!.isNotEmpty
               ? [fc.Email(address: _profileData['email']!, label: fc.Label(fc.EmailLabel.home))]
               : [],
-          // v2 কনস্ট্রাক্টরের সঠিক প্যারামিটার 'street' এবং 'companyName' সেট করা হলো
           addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
               ? [fc.Address(street: _profileData['address']!, label: fc.Label(fc.AddressLabel.work))]
               : [],
           organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
-              ? [fc.Organization(companyName: _profileData['org']!)]
+              ? [fc.Organization(company: _profileData['org']!)] // company প্যারামিটার ফিক্সড
               : [],
           notes: _profileData['bio'] != null && _profileData['bio']!.isNotEmpty
               ? [fc.Note(note: _profileData['bio']!)]
