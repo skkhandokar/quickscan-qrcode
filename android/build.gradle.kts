@@ -1,7 +1,7 @@
 allprojects {
     repositories {
         google()
-        central()
+        mavenCentral() // এখানে টাইপো ঠিক করে mavenCentral() করা হয়েছে
     }
 }
 
@@ -72,7 +72,7 @@ subprojects {
                     bypassField.invoke(this, true)
                 } catch (e: Exception) {
                     try {
-                        // গ্রেডলের ইন্টারনাল ফিল্ডের ভিন্ন নামের জন্য অল্টারনেটিভ ব্যাকআপ ট্রিক
+                        // গ্রেডলের ইন্টারনাল খেলনা ফিল্ডের ভিন্ন নামের জন্য অল্টারনেটিভ ব্যাকআপ ট্রিক
                         val alternativeField = this.javaClass.getField("isBypassNamespaceCheck")
                         alternativeField.set(this, true)
                     } catch (ignored: Exception) {
