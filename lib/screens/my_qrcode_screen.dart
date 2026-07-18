@@ -121,28 +121,28 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
   Future<void> _addContact() async {
     if (_profileData['name'] == null || _profileData['name']!.isEmpty) return;
 
-    if (await fc.FlutterContacts.requestPermission()) {
+    if (await fc.requestPermission()) {
       try {
         final newContact = fc.Contact(
           name: fc.Name(first: _profileData['name'] ?? ''),
           phones: _profileData['phone'] != null && _profileData['phone']!.isNotEmpty
-              ? [fc.Phone(number: _profileData['phone']!, label: fc.PhoneLabel.mobile)]
+              ? [fc.Phone(number: _profileData['phone']!, label: fc.Label(fc.PhoneLabel.mobile))]
               : [],
           emails: _profileData['email'] != null && _profileData['email']!.isNotEmpty
-              ? [fc.Email(address: _profileData['email']!, label: fc.EmailLabel.home)]
+              ? [fc.Email(address: _profileData['email']!, label: fc.Label(fc.EmailLabel.home))]
               : [],
           addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
-              ? [fc.Address(address: _profileData['address']!, label: fc.AddressLabel.work)]
+              ? [fc.Address(street: _profileData['address']!, label: fc.Label(fc.AddressLabel.work))]
               : [],
           organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
-              ? [fc.Organization(company: _profileData['org']!)]
+              ? [fc.Organization(companyName: _profileData['org']!)]
               : [],
           notes: _profileData['bio'] != null && _profileData['bio']!.isNotEmpty
               ? [fc.Note(note: _profileData['bio']!)]
               : [],
         );
         
-        await fc.FlutterContacts.insertContact(newContact);
+        await fc.insertContact(newContact);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

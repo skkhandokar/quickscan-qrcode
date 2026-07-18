@@ -1172,6 +1172,13 @@
 
 
 
+
+
+
+
+
+
+
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -1313,7 +1320,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   }
 
   Future<void> _saveContactFromQR() async {
-    if (await fc.FlutterContacts.requestPermission()) {
+    if (await fc.requestPermission()) {
       try {
         String name = "QR Contact";
         String phone = "";
@@ -1326,10 +1333,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
         final newContact = fc.Contact(
           name: fc.Name(first: name),
-          phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.PhoneLabel.mobile)] : [],
+          phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))] : [],
         );
         
-        await fc.FlutterContacts.insertContact(newContact);
+        await fc.insertContact(newContact);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1708,9 +1715,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       buttons.add(_actionIconButton(icon: Icons.person_add_alt_1_rounded, label: 'Add contact', onTap: _saveContactFromQR));
     }
     else if (_isSMS) {
-      buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: () => _sendSMS(isMMS: false)));
+      buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: _sendSMS(isMMS: false)));
       buttons.add(const SizedBox(width: 20));
-      buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: () => _sendSMS(isMMS: true)));
+      buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: _sendSMS(isMMS: true)));
     }
     else if (_isGeo || widget.rawValue.toLowerCase().contains('bangladesh') || widget.rawValue.toLowerCase().contains('dhaka')) {
       buttons.add(_actionIconButton(icon: Icons.location_on_rounded, label: 'Show Map', onTap: _openInMap));
@@ -1729,7 +1736,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return InkWell(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MainAxisSize.min, // এখানে MainAxisSize ফিক্স করা হয়েছে
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: Colors.blue, size: 36),
           const SizedBox(height: 8),
