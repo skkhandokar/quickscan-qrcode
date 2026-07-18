@@ -1173,7 +1173,6 @@
 
 
 
-
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -1315,7 +1314,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   }
 
   Future<void> _saveContactFromQR() async {
-    if (await fc.requestPermission()) {
+    if (await fc.FlutterContacts.requestPermission()) {
       try {
         String name = "QR Contact";
         String phone = "";
@@ -1326,17 +1325,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           phone = widget.rawValue.split('TEL:')[1].split(';')[0];
         }
 
-        final newContact = fc.Contact();
-        newContact.name.given = name;
-
-        if (phone.isNotEmpty) {
-          final phoneObj = fc.Phone();
-          phoneObj.number = phone;
-          phoneObj.label = fc.PhoneLabel.mobile;
-          newContact.phones = [phoneObj];
-        }
+        final newContact = fc.Contact(
+          name: fc.Name(given: name),
+          phones: phone.isNotEmpty ? [fc.Phone(phone, label: fc.PhoneLabel.mobile)] : [],
+        );
         
-        await fc.insertContact(newContact);
+        await fc.FlutterContacts.insertContact(newContact);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1736,7 +1730,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return InkWell(
       onTap: onTap,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: MinAxisSize.min,
         children: [
           Icon(icon, color: Colors.blue, size: 36),
           const SizedBox(height: 8),

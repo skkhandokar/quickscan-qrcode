@@ -121,45 +121,28 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
   Future<void> _addContact() async {
     if (_profileData['name'] == null || _profileData['name']!.isEmpty) return;
 
-    if (await fc.requestPermission()) {
+    if (await fc.FlutterContacts.requestPermission()) {
       try {
-        final newContact = fc.Contact();
-        newContact.name.given = _profileData['name'] ?? '';
+        final newContact = fc.Contact(
+          name: fc.Name(given: _profileData['name'] ?? ''),
+          phones: _profileData['phone'] != null && _profileData['phone']!.isNotEmpty
+              ? [fc.Phone(_profileData['phone']!, label: fc.PhoneLabel.mobile)]
+              : [],
+          emails: _profileData['email'] != null && _profileData['email']!.isNotEmpty
+              ? [fc.Email(_profileData['email']!, label: fc.EmailLabel.home)]
+              : [],
+          addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
+              ? [fc.Address(_profileData['address']!, label: fc.AddressLabel.work)]
+              : [],
+          organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
+              ? [fc.Organization(company: _profileData['org']!)]
+              : [],
+          notes: _profileData['bio'] != null && _profileData['bio']!.isNotEmpty
+              ? [fc.Note(note: _profileData['bio']!)]
+              : [],
+        );
         
-        if (_profileData['phone'] != null && _profileData['phone']!.isNotEmpty) {
-          final phoneObj = fc.Phone();
-          phoneObj.number = _profileData['phone']!;
-          phoneObj.label = fc.PhoneLabel.mobile;
-          newContact.phones = [phoneObj];
-        }
-
-        if (_profileData['email'] != null && _profileData['email']!.isNotEmpty) {
-          final emailObj = fc.Email();
-          emailObj.address = _profileData['email']!;
-          emailObj.label = fc.EmailLabel.home;
-          newContact.emails = [emailObj];
-        }
-
-        if (_profileData['address'] != null && _profileData['address']!.isNotEmpty) {
-          final addressObj = fc.Address();
-          addressObj.street = _profileData['address']!;
-          addressObj.label = fc.AddressLabel.work;
-          newContact.addresses = [addressObj];
-        }
-
-        if (_profileData['org'] != null && _profileData['org']!.isNotEmpty) {
-          final orgObj = fc.Organization();
-          orgObj.company = _profileData['org']!;
-          newContact.organizations = [orgObj];
-        }
-
-        if (_profileData['bio'] != null && _profileData['bio']!.isNotEmpty) {
-          final noteObj = fc.Note();
-          noteObj.note = _profileData['bio']!;
-          newContact.notes = [noteObj];
-        }
-        
-        await fc.insertContact(newContact);
+        await fc.FlutterContacts.insertContact(newContact);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
