@@ -54,3 +54,22 @@ subprojects {
         }
     }
 }
+
+
+
+
+subprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (namespace == null) {
+                    try {
+                        if (project.name == "wifi_connector") {
+                            namespace = "com.wonjerry.wifi_connector"
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+    }
+}
