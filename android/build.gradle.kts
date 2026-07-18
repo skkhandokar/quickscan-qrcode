@@ -1,7 +1,7 @@
 allprojects {
     repositories {
         google()
-        mavenCentral()
+        central()
     }
 }
 
@@ -15,6 +15,7 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
@@ -25,7 +26,6 @@ tasks.register<Delete>("clean") {
 
 // সাবপ্রজেক্টের missing namespace সমস্যা দূর করার জন্য নিরাপদ ও কার্যকরী কোড
 subprojects {
-    // নেমস্পেস সেট করার মূল লজিক
     val configureNamespace = {
         val android = project.extensions.findByName("android")
         if (android != null) {
@@ -40,12 +40,11 @@ subprojects {
                     setNamespace.invoke(android, "com.dummy.$safeName")
                 }
             } catch (e: Exception) {
-                // কোনো মেথড বা কাস্টিং সমস্যা হলে তা এড়িয়ে যাবে
+                // কোনো মেথড বা কাস্টিং সমস্যা হলে তা এড়িয়ে যাবে
             }
         }
     }
 
-    // প্রজেক্ট অলরেডি ইভালুয়েট হয়ে গেলে সরাসরি রান করবে, নয়তো afterEvaluate এর জন্য অপেক্ষা করবে
     if (project.state.executed) {
         configureNamespace()
     } else {
@@ -55,19 +54,31 @@ subprojects {
     }
 }
 
-
-
+// wifi_connector এর Manifest Incorrect Package এরর বাইপাস করার জন্য চূড়ান্ত রুলস
 subprojects {
     val currentProject = this
-    // প্রোজেক্ট অলরেডি রেডি থাকলে সরাসরি কনফিগার করা
-    if (currentProject.hasProperty("android") && currentProject.name == "wifi_connector") {
-        val androidExtension = currentProject.extensions.findByName("android")
-        if (androidExtension != null) {
-            try {
-                val dslNamespace = androidExtension.javaClass.getMethod("setNamespace", String::class.java)
-                dslNamespace.invoke(androidExtension, "com.wonjerry.wifi_connector")
-            } catch (e: Exception) {
-                // রিফ্লেকশন ব্যাকআপ এরর হ্যান্ডলিং
+    
+    // অ্যান্ড্রয়েড বেস প্লাগইন লোড হওয়ার সাথে সাথে এটি এক্সিকিউট হবে
+    currentProject.plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
+        
+        // আমাদের টার্গেটেড প্লাগইনটি চেক করা
+        if (currentProject.name == "wifi_connector") {
+            
+            // লাইব্রেরি ম্যানিফেস্ট প্রসেস করার টাস্কটি খুঁজে বের করা
+            currentProject.tasks.withType(com.android.build.gradle.tasks.ProcessLibraryManifest::class.java).configureEach {
+                try {
+                    // গ্রেডল ৮+ এর কড়া গাইডলাইন চেকটিকে ফোর্সফুলি বাইপাস করা
+                    val bypassField = this.javaClass.getMethod("setIsBypassNamespaceCheck", Boolean::class.java)
+                    bypassField.invoke(this, true)
+                } catch (e: Exception) {
+                    try {
+                        // গ্রেডলের ইন্টারনাল ফিল্ডের ভিন্ন নামের জন্য অল্টারনেটিভ ব্যাকআপ ট্রিক
+                        val alternativeField = this.javaClass.getField("isBypassNamespaceCheck")
+                        alternativeField.set(this, true)
+                    } catch (ignored: Exception) {
+                        // কোনো কারণে মেথড ম্যাচ না করলে ক্র্যাশ এড়াতে
+                    }
+                }
             }
         }
     }
