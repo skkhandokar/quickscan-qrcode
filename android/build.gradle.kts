@@ -78,22 +78,35 @@ subprojects {
     }
 }
 
-// জাভা, কোটলিন কমপ্যাটিবিলিটি এবং ওল্ড প্লাগইনের compileSdk কনফ্লিক্ট দূর করার অল-ইন-ওয়ান ট্রিক
+// জাভা, কোটলিন কমপ্যাটিবিলিটি এবং ওল্ড প্লাগইনের compileSdk কনф্লিক্ট দূর করার টাইপ-সেফ মেথড
 subprojects {
-    // ১. ওল্ড প্লাগইনগুলোর compileSdkVersion এবং targetSdkVersion রানটাইমে টাইপ-সেফ মেথডে ওভাররাইড করা
+    // ১. ওল্ড প্লাগইনগুলোর compileSdkVersion এবং targetSdkVersion রানটাইমে ওভাররাইড করা
     plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
         val android = extensions.findByName("android")
         if (android != null) {
             try {
-                // কোনো রিফ্লেকশন বা কাস্টম কাস্টিং ছাড়াই ডিরেক্ট প্রোপার্টি ইন্জেকশন (compileSdk 34 এ লক)
-                android.setProperty("compileSdkVersion", 34)
-                
-                val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
-                defaultConfig.javaClass.getMethod("setTargetSdkVersion", Any::class.java).invoke(defaultConfig, 34)
-            } catch (e: Exception) {
+                // সরাসরি জাভা রিফ্লেকশন ব্যবহার করে সেট করা, যাতে গ্রেডল তার নিজস্ব মেথডের সাথে গুলিয়ে না ফেলে
                 try {
-                    android.setProperty("compileSdk", 34)
-                } catch (ignored: Exception) {}
+                    val setCompileSdkVersionMethod = android.javaClass.getMethod("setCompileSdkVersion", Int::class.java)
+                    setCompileSdkVersionMethod.invoke(android, 34)
+                } catch (e: Exception) {
+                    try {
+                        val setCompileSdkMethod = android.javaClass.getMethod("setCompileSdk", Int::class.java)
+                        setCompileSdkMethod.invoke(android, 34)
+                    } catch (ignored: Exception) {}
+                }
+                
+                // targetSdkVersion ৩৪ এ লক করা
+                val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
+                try {
+                    defaultConfig.javaClass.getMethod("setTargetSdkVersion", Any::class.java).invoke(defaultConfig, 34)
+                } catch (e: Exception) {
+                    try {
+                        defaultConfig.javaClass.getMethod("setTargetSdk", Int::class.java).invoke(defaultConfig, 34)
+                    } catch (ignored: Exception) {}
+                }
+            } catch (e: Exception) {
+                // মেথড ইনভোকেশন ফেইল করলে সেফলি এড়িয়ে যাবে
             }
 
             // ২. জাভা কমপ্যাটিবিলিটি ১৭ সেট করা
@@ -111,7 +124,6 @@ subprojects {
     tasks.configureEach {
         if (name.contains("compile", ignoreCase = true) && name.contains("kotlin", ignoreCase = true)) {
             try {
-                // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
                 val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
                 val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
                 val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
@@ -122,11 +134,15 @@ subprojects {
                 setMethod.invoke(jvmTargetObj, jvmTargetValue)
             } catch (e: Exception) {
                 try {
-                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড
-                    setProperty("kotlinOptions.jvmTarget", "17")
+                    // ওল্ড কোটলিন প্লাগইন ব্যাকআপ প্রোপার্টি ওভাররাইড (Groovy টাইপ এড়িয়ে সরাসরি মেথড কল)
+                    val kotlinOptions = this.javaClass.getMethod("getKotlinOptions").invoke(this)
+                    kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java).invoke(kotlinOptions, "17")
                 } catch (ignored: Exception) {
                     try {
-                        setProperty("compilerOptions.jvmTarget", "17")
+                        val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
+                        val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
+                        val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
+                        jvmTargetObj.javaClass.getMethod("set", String::class.java).invoke(jvmTargetObj, "17")
                     } catch (lastHope: Exception) {}
                 }
             }
