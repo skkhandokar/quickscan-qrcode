@@ -79,3 +79,36 @@ subprojects {
         }
     }
 }
+
+
+
+
+
+// সব সাব-প্রজেক্ট এবং প্লাগইনের জাভা ও কোটলিন কম্পাইলার টার্গেট ১৭-এ লক করার কোড
+subprojects {
+    tasks.withType(org.jetbrains.kotlin.graphql.plugin.tasks.KotlinCompile::class.java).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
+    
+    // ব্যাকআপ হিসেবে অল্টারনেটিভ কোটলিন টাস্ক হ্যান্ডেল করার জন্য
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
+
+    plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
+        val android = extensions.findByName("android")
+        if (android != null) {
+            try {
+                val compileOptions = android::class.java.getMethod("getCompileOptions").invoke(android)
+                compileOptions::class.java.getMethod("setSourceCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
+                compileOptions::class.java.getMethod("setTargetCompatibility", Any::class.java).invoke(compileOptions, JavaVersion.VERSION_17)
+            } catch (e: Exception) {
+                // রিফ্লেকশন ব্যাকআপ হ্যান্ডলিং
+            }
+        }
+    }
+}
