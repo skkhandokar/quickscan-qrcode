@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.skkhandokar.quickscan" // Kotlin-এ সবসময় ডাবল কোটেশন ("") হবে
+    namespace = "com.skkhandokar.quickscan" // Kotlin-এ সবসময় ডাবল কোটেশন ("") হবে
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "28.2.13676358"
 
@@ -60,4 +60,20 @@ android {
 
 flutter {
     source = "../.." 
+}
+
+// ==================================================================================
+// 🛠️ গ্লোবাল কম্পাইলার রুল: আপনার অ্যাপ এবং সমস্ত ওল্ড/নিউ প্লাগইনের JVM Target সিঙ্ক করার কোড
+// ==================================================================================
+rootProject.subprojects {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).configureEach {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+
+    tasks.withType(JavaCompile::class.java).configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+    }
 }
