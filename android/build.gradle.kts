@@ -24,7 +24,7 @@ tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-// ১. সাবপ্রজেক্টের missing namespace সমস্যা দূর করার জন্য নিরাপদ ও কার্যকরী কোড
+// ১. সাবপ্রজেক্টের missing namespace সমস্যা দূর করার সেফ কোড (afterEvaluate ডেডলক মুক্ত)
 subprojects {
     val configureNamespace = {
         val android = project.extensions.findByName("android")
@@ -40,7 +40,7 @@ subprojects {
                     setNamespace.invoke(android, "com.dummy.$safeName")
                 }
             } catch (e: Exception) {
-                // কোনো মেথড বা কাস্টিং সমস্যা হলে তা এড়িয়ে যাবে
+                // ইগনোরড
             }
         }
     }
@@ -49,7 +49,7 @@ subprojects {
         configureNamespace()
     } else {
         project.afterEvaluate {
-            configureNamespace()
+            try { configureNamespace() } catch(e: Exception) {}
         }
     }
 }
@@ -71,19 +71,18 @@ subprojects {
                         manifest.javaClass.getMethod("srcFile", Any::class.java).invoke(manifest, customManifestFile)
                     }
                 } catch (e: Exception) {
-                    // ব্যাকআপ হ্যান্ডলিং
+                    // ইগনোরড
                 }
             }
         }
     }
 }
 
-// ৩. জাভা, কোটলিন এবং ওল্ড প্লাগইনের compileSdk কনফ্লিক্ট মেটানোর চূড়ান্ত ফুলপ্রুফ মেথড
-// ৩. জাভা, কোটলিন কমপ্যাটিবিলিটি, ওল্ড প্লাগইনের compileSdk এবং JVM Target কনফ্লিক্ট মেটানোর চূড়ান্ত সমাধান
+// ৩. জাভা, কোটলিন কমপ্যাটিবিলিটি, ওল্ড প্লাগইনের compileSdk এবং JVM Target কনফ্লিক্ট মেটানোর চূড়ান্ত সমাধান (afterEvaluate মুক্ত)
 subprojects {
     val currentProject = this
     
-    // অ্যান্ড্রয়েড বেস প্লাগইন ট্র্যাকিং (afterEvaluate এর আগে এক্সিকিউট হবে)
+    // অ্যান্ড্রয়েড বেস প্লাগইন ট্র্যাকিং (প্লাগইন লোড হওয়া মাত্রই রান করবে)
     currentProject.plugins.any { plugin ->
         if (plugin.javaClass.name.startsWith("com.android.build")) {
             try {
@@ -112,21 +111,12 @@ subprojects {
         false
     }
 
-    // google_mlkit_commons সহ সব প্লাগইনের Java এবং Kotlin JVM Target সম্পূর্ণ সিঙ্ক করার জন্য টাইপ-সেফ Java Toolchain হুক
-    currentProject.afterEvaluate {
-        if (currentProject.plugins.hasPlugin("java") || currentProject.extensions.findByName("java") != null) {
-            try {
-                val javaExt = currentProject.extensions.findByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
-                javaExt?.toolchain?.languageVersion?.set(org.gradle.api.JavaVersion.VERSION_17.let { org.gradle.jvm.toolchain.JavaLanguageVersion.of(17) })
-            } catch (ignored: Exception) {}
-        }
-    }
-
-    // কোটলিন এবং জাভা কম্পাইলার টাস্কগুলোর জন্য রানটাইম প্রোপার্টি দিয়ে ফাইনাল ব্যাকআপ ইন্জেকশন
+    // কোটলিন এবং জাভা কম্পাইলার টাস্কগুলোর কনফ্লিক্ট সরাসরি টাস্ক লেভেলে ওভাররাইড করা (কোনো afterEvaluate লক ছাড়াই)
     tasks.configureEach {
         if (name.contains("compile", ignoreCase = true)) {
             if (name.contains("kotlin", ignoreCase = true)) {
                 try {
+                    // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
                     val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
                     val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
                     val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
@@ -142,12 +132,12 @@ subprojects {
                     } catch (ignored: Exception) {}
                 }
             } else if (name.contains("java", ignoreCase = true)) {
+                // জাভা কম্পাইলার টাস্কগুলোর (যেমন :google_mlkit_commons) টার্গেট ফোর্সফুলি ১৭ করা
                 try {
-                    // জাভা কম্পাইলার টাস্কগুলোর টার্গেট ও সোর্স কমপ্যাটিবিলিটি সরাসরি প্রোপার্টি লেভেলে ফিক্স করা
-                    val targetCompatField = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
-                    targetCompatField.invoke(this, "17")
-                    val sourceCompatField = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
-                    sourceCompatField.invoke(this, "17")
+                    val setTargetCompatibilityMethod = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
+                    setTargetCompatibilityMethod.invoke(this, "17")
+                    val setSourceCompatibilityMethod = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
+                    setSourceCompatibilityMethod.invoke(this, "17")
                 } catch (ignored: Exception) {}
             }
         }
