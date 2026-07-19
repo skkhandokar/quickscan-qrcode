@@ -79,10 +79,11 @@ subprojects {
 }
 
 // ৩. জাভা, কোটলিন কমপ্যাটিবিলিটি, ওল্ড প্লাগইনের compileSdk এবং JVM Target কনফ্লিক্ট মেটানোর চূড়ান্ত সমাধান (afterEvaluate মুক্ত)
+// ৩. জাভা, কোটলিন, ওল্ড প্লাগইনের compileSdk এবং JVM Target কনф্লিক্ট মেটানোর চূড়ান্ত ফুলপ্রুফ টুলচেইন ফিক্স
 subprojects {
     val currentProject = this
     
-    // অ্যান্ড্রয়েড বেস প্লাগইন ট্র্যাকিং (প্লাগইন লোড হওয়া মাত্রই রান করবে)
+    // অ্যান্ড্রয়েড বেস প্লাগইন ট্র্যাকিং এবং SDK ৩৪ এলিভেশন
     currentProject.plugins.any { plugin ->
         if (plugin.javaClass.name.startsWith("com.android.build")) {
             try {
@@ -100,7 +101,7 @@ subprojects {
                     defaultConfigObj.javaClass.methods.find { it.name == "setTargetSdkVersion" }?.invoke(defaultConfigObj, 34)
                     defaultConfigObj.javaClass.methods.find { it.name == "setTargetSdk" }?.invoke(defaultConfigObj, 34)
 
-                    // সব সাবপ্রজেক্টের জাভা অপশন এবং কম্পাইলেশন লেভেল ১৭ এ ফোর্স সেট করা
+                    // অ্যান্ড্রেয়েড কমপাইল অপশন গ্লোবালি জাভা ১৭ এ সিঙ্ক
                     val getCompileOptions = androidExt.javaClass.getMethod("getCompileOptions")
                     val compileOptionsObj = getCompileOptions.invoke(androidExt)
                     compileOptionsObj.javaClass.getMethod("setSourceCompatibility", Any::class.java).invoke(compileOptionsObj, JavaVersion.VERSION_17)
@@ -111,33 +112,39 @@ subprojects {
         false
     }
 
-    // কোটলিন এবং জাভা কম্পাইলার টাস্কগুলোর কনফ্লিক্ট সরাসরি টাস্ক লেভেলে ওভাররাইড করা (কোনো afterEvaluate লক ছাড়াই)
+    // ১. গ্রেডল জাভা টাস্কগুলোর (compileJavaWithJavac) ভেতরের ইন্টারনাল অপশন ভেঙে জাভা ১৭ ফোর্স করা
+    tasks.withType(JavaCompile::class.java).configureEach {
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
+        options.compilerArgs.addAll(listOf("-source", "17", "-target", "17"))
+        
+        // যদি গ্রেডল টুলচেইন কনফিগারড থাকে, সেটারও ল্যাঙ্গুয়েজ ভার্সন ১৭ এ ফোর্স করা
+        try {
+            val toolchainMethod = this.javaClass.getMethod("getToolchain")
+            val toolchainObj = toolchainMethod.invoke(this)
+            toolchainObj.javaClass.getMethod("getLanguageVersion").let { versionProp ->
+                val versionObj = versionProp.invoke(toolchainObj)
+                versionObj.javaClass.getMethod("set", Any::class.java).invoke(versionObj, org.gradle.jvm.toolchain.JavaLanguageVersion.of(17))
+            }
+        } catch (ignored: Exception) {}
+    }
+
+    // ২. কোটলিন কম্পাইলার টাস্কগুলোর জন্য রানটাইম প্রোপার্টি দিয়ে JVM Target 17 ফিক্স (কোনো টাইপ কনফ্লিক্ট ছাড়া)
     tasks.configureEach {
-        if (name.contains("compile", ignoreCase = true)) {
-            if (name.contains("kotlin", ignoreCase = true)) {
+        if (name.contains("compile", ignoreCase = true) && name.contains("kotlin", ignoreCase = true)) {
+            try {
+                val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
+                val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
+                val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
+                val setMethod = jvmTargetObj.javaClass.getMethod("set", Any::class.java)
+                
+                val jvmTargetEnumClass = Class.forName("org.jetbrains.kotlin.gradle.dsl.JvmTarget")
+                val jvmTargetValue = jvmTargetEnumClass.getField("JVM_17").get(null)
+                setMethod.invoke(jvmTargetObj, jvmTargetValue)
+            } catch (e: Exception) {
                 try {
-                    // আধুনিক compilerOptions DSL ট্র্যাকিং (Kotlin 2.x+)
-                    val compilerOptions = this.javaClass.getMethod("getCompilerOptions").invoke(this)
-                    val jvmTargetProp = compilerOptions.javaClass.getMethod("getJvmTarget")
-                    val jvmTargetObj = jvmTargetProp.invoke(compilerOptions)
-                    val setMethod = jvmTargetObj.javaClass.getMethod("set", Any::class.java)
-                    
-                    val jvmTargetEnumClass = Class.forName("org.jetbrains.kotlin.gradle.dsl.JvmTarget")
-                    val jvmTargetValue = jvmTargetEnumClass.getField("JVM_17").get(null)
-                    setMethod.invoke(jvmTargetObj, jvmTargetValue)
-                } catch (e: Exception) {
-                    try {
-                        val kotlinOptions = this.javaClass.getMethod("getKotlinOptions").invoke(this)
-                        kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java).invoke(kotlinOptions, "17")
-                    } catch (ignored: Exception) {}
-                }
-            } else if (name.contains("java", ignoreCase = true)) {
-                // জাভা কম্পাইলার টাস্কগুলোর (যেমন :google_mlkit_commons) টার্গেট ফোর্সফুলি ১৭ করা
-                try {
-                    val setTargetCompatibilityMethod = this.javaClass.getMethod("setTargetCompatibility", String::class.java)
-                    setTargetCompatibilityMethod.invoke(this, "17")
-                    val setSourceCompatibilityMethod = this.javaClass.getMethod("setSourceCompatibility", String::class.java)
-                    setSourceCompatibilityMethod.invoke(this, "17")
+                    val kotlinOptions = this.javaClass.getMethod("getKotlinOptions").invoke(this)
+                    kotlinOptions.javaClass.getMethod("setJvmTarget", String::class.java).invoke(kotlinOptions, "17")
                 } catch (ignored: Exception) {}
             }
         }
