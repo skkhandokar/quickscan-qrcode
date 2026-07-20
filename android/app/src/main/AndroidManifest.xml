@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+       <uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
 
     <!-- কন্টাক্ট রিড এবং রাইট করার জন্য প্রয়োজনীয় পারমিশন (নতুন যুক্ত করা হলো) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />

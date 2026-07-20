@@ -117,7 +117,7 @@ class CustomDrawer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Drawer(
       child: Container(
-        color: const Color(0xFF1E1E1E), // ডার্ক ব্যাকগ্রাউন্ড
+        color: const Color.fromARGB(255, 10, 10, 10), // ডার্ক ব্যাকগ্রাউন্ড
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -135,7 +135,7 @@ class CustomDrawer extends StatelessWidget {
                   SizedBox(height: 5),
                   Text(
                     'QR & Barcode Utility', 
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: Color.fromARGB(179, 254, 253, 253), fontSize: 13),
                   ),
                 ],
               ),
