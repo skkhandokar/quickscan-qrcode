@@ -193,7 +193,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
         _customTextField(controllers['wifi_pass']!, 'Password', obscureText: true),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
-          value: _wifiSecurity,
+          initialValue: _wifiSecurity,
           dropdownColor: const Color(0xFF1E1E1E),
           style: const TextStyle(color: Colors.white),
           decoration: const InputDecoration(
