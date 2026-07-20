@@ -535,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const Text('Auto Copy to Clipboard', style: TextStyle(color: Colors.white, fontSize: 13)),
                     value: _autoCopy,
                     dense: true,
-                    activeColor: Colors.blueAccent,
+                    activeThumbColor: Colors.blueAccent,
                     onChanged: (val) {
                       setState(() => _autoCopy = val);
                       HistoryService.setAutoSettings(_autoCopy, _autoOpen);
@@ -545,7 +545,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     title: const Text('Auto Open Web Links', style: TextStyle(color: Colors.white, fontSize: 13)),
                     value: _autoOpen,
                     dense: true,
-                    activeColor: Colors.blueAccent,
+                    activeThumbColor: Colors.blueAccent,
                     onChanged: (val) {
                       setState(() => _autoOpen = val);
                       HistoryService.setAutoSettings(_autoCopy, _autoOpen);

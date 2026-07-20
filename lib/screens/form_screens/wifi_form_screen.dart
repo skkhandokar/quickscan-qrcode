@@ -105,7 +105,7 @@ class _WifiFormScreenState extends State<WifiFormScreen> {
             ),
             const SizedBox(height: 15),
             DropdownButtonFormField<String>(
-              value: _selectedSecurity,
+              initialValue: _selectedSecurity,
               dropdownColor: const Color(0xFF1E1E1E),
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(

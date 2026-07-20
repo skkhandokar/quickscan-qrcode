@@ -1107,7 +1107,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                           child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
                         ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ),

@@ -1,12 +1,10 @@
 // lib/screens/my_qrcode_screen.dart
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_contacts/flutter_contacts.dart' as fc; 
-import 'package:permission_handler/permission_handler.dart';
 import '../widgets/custom_drawer.dart';
 import '../services/history_service.dart';
 
