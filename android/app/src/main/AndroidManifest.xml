@@ -4,9 +4,9 @@
     <!-- কন্টাক্ট রিড এবং রাইট করার জন্য প্রয়োজনীয় পারমিশন (নতুন যুক্ত করা হলো) -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
-
+     <uses-permission android:name="android.permission.CAMERA" />
     <application
-        android:label="QuickScan"
+        android:label="QuickScan"   
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
