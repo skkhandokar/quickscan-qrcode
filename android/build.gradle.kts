@@ -1,3 +1,14 @@
+// ১. সমস্ত সাবপ্রজেক্টের জাভা এবং কোটলিন টাস্ককে একসাথে জাভা ১৭ সংস্করণে লক করার গ্লোবাল টুলচেইন
+subprojects {
+    plugins.withType(org.gradle.api.plugins.JavaPlugin::class.java) {
+        extensions.configure<org.gradle.api.plugins.JavaPluginExtension>("java") {
+            toolchain {
+                languageVersion.set(JavaLanguageVersion.of(17))
+            }
+        }
+    }
+}
+
 allprojects {
     repositories {
         google()
@@ -24,7 +35,7 @@ tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
 
-// সাবপ্রজেক্টের missing namespace সমস্যা দূর করার জন্য নিরাপদ ও কার্যকরী কোড
+// সাবপ্রজেক্টের missing namespace সমস্যা দূর করার সেফ কোড
 subprojects {
     val configureNamespace = {
         val android = project.extensions.findByName("android")
@@ -40,7 +51,7 @@ subprojects {
                     setNamespace.invoke(android, "com.dummy.$safeName")
                 }
             } catch (e: Exception) {
-                // কোনো মেথড বা কাস্টিং সমস্যা হলে তা এড়িয়ে যাবে
+                // ইগনোরড
             }
         }
     }
@@ -49,31 +60,7 @@ subprojects {
         configureNamespace()
     } else {
         project.afterEvaluate {
-            configureNamespace()
-        }
-    }
-}
-
-// wifi_connector এর Manifest থেকে package="..." অ্যাট্রিবিউটের এরর বাইপাস করার সোয়াপ ট্রিক
-subprojects {
-    val currentProject = this
-    if (currentProject.name == "wifi_connector") {
-        plugins.withType(com.android.build.gradle.api.AndroidBasePlugin::class.java) {
-            val androidExtension = currentProject.extensions.findByName("android")
-            if (androidExtension != null) {
-                try {
-                    val sourceSets = androidExtension.javaClass.getMethod("getSourceSets").invoke(androidExtension)
-                    val mainSourceSet = sourceSets.javaClass.getMethod("getByName", String::class.java).invoke(sourceSets, "main")
-                    val manifest = mainSourceSet.javaClass.getMethod("getManifest").invoke(mainSourceSet)
-                    
-                    val customManifestFile = rootProject.file("app/wifi_connector_manifest/AndroidManifest.xml")
-                    if (customManifestFile.exists()) {
-                        manifest.javaClass.getMethod("srcFile", Any::class.java).invoke(manifest, customManifestFile)
-                    }
-                } catch (e: Exception) {
-                    // ব্যাকআপ হ্যান্ডলিং
-                }
-            }
+            try { configureNamespace() } catch(e: Exception) {}
         }
     }
 }
