@@ -41,6 +41,8 @@ jobs:
           EOF
 
       - name: Build AAB
+        env:
+          GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
         run: flutter build appbundle --release
 
       - name: Upload Artifact
