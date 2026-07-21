@@ -30,11 +30,16 @@ android {
     }
 
     // ---- ২. রিলিজ সাইনিং কনফিগারেশন ব্লক ----
+   // ---- ২. রিলিজ সাইনিং কনফিগারেশন ব্লক ----
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties.getProperty("keyAlias")
             keyPassword = keystoreProperties.getProperty("keyPassword")
-            storeFile = keystoreProperties.getProperty("storeFile")?.let { rootProject.file(it) }
+            // android/ ফোল্ডার বা রুটে ফাইল থাকলে উভয় ক্ষেত্রেই কাজ করার নিরাপদ পাথ:
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { 
+                val file = file(it)
+                if (file.exists()) file else rootProject.file("android/$it")
+            }
             storePassword = keystoreProperties.getProperty("storePassword")
         }
     }

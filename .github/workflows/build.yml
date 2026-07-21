@@ -33,10 +33,12 @@ jobs:
 
       - name: Create key.properties
         run: |
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" > android/key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-          echo "storeFile=upload-keystore.jks" >> android/key.properties
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
+          cat <<EOF > android/key.properties
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          storeFile=upload-keystore.jks
+          storePassword=${{ secrets.STORE_PASSWORD }}
+          EOF
 
       - name: Build AAB
         run: flutter build appbundle --release
