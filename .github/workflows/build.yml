@@ -3,7 +3,7 @@ name: Flutter Build Release AAB
 on:
   push:
     branches:
-      - main # আপনার মেইন ব্রাঞ্চের নাম যদি master হয়, তবে এখানে master লিখে দেবেন
+      - main # আপনার মেইন ব্রাঞ্চের নাম যদি master হয়, তবে এখানে master লিখে দেবেন
 
 jobs:
   build:
@@ -11,10 +11,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -42,7 +42,7 @@ jobs:
         run: flutter build appbundle --release
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.1
         with:
           name: app-release
           path: build/app/outputs/bundle/release/app-release.aab
