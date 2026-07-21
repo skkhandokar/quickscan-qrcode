@@ -8,11 +8,16 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// ---- ১. key.properties ফাইলটি কানেক্ট করার সঠিক Kotlin DSL লজিক ----
+// ---- ১. key.properties ফাইলটি রিড করার নিখুঁত লজিক ----
 val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+// android/key.properties অথবা root এর key.properties দুটোই নিরাপদে চেক করবে
+val keyPropsFileInAndroid = rootProject.file("android/key.properties")
+val keyPropsFileInRoot = rootProject.file("key.properties")
+
+if (keyPropsFileInAndroid.exists()) {
+    keystoreProperties.load(FileInputStream(keyPropsFileInAndroid))
+} else if (keyPropsFileInRoot.exists()) {
+    keystoreProperties.load(FileInputStream(keyPropsFileInRoot))
 }
 
 android {
@@ -29,17 +34,20 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
-    // ---- ২. রিলিজ সাইনিং কনফিগারেশন ব্লক ----
-   // ---- ২. রিলিজ সাইনিং কনফিগারেশন ব্লক ----
+    // ---- ২. রিলিজ সাইনিং কনফিগারেশন ব্লক (পাথ ডুপ্লিকেশন ফিক্সড) ----
     signingConfigs {
         create("release") {
             keyAlias = keystoreProperties.getProperty("keyAlias")
             keyPassword = keystoreProperties.getProperty("keyPassword")
-            // android/ ফোল্ডার বা রুটে ফাইল থাকলে উভয় ক্ষেত্রেই কাজ করার নিরাপদ পাথ:
-            storeFile = keystoreProperties.getProperty("storeFile")?.let { 
-                val file = file(it)
-                if (file.exists()) file else rootProject.file("android/$it")
+            
+            // keystore ফাইলটি android/ ফোল্ডারে থাকলে সরাসরি খুঁজে পাওয়ার লজিক
+            storeFile = keystoreProperties.getProperty("storeFile")?.let { fileName ->
+                val fileInAndroid = rootProject.file("android/$fileName")
+                val fileInRoot = rootProject.file(fileName)
+                
+                if (fileInAndroid.exists()) fileInAndroid else fileInRoot
             }
+            
             storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
@@ -65,7 +73,8 @@ android {
                 "proguard-rules.pro"
             )
         }
-    }}
+    }
+}
 
 flutter {
     source = "../.." 
