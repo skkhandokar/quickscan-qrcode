@@ -6,12 +6,15 @@
 -keep class io.flutter.embedding.** { *; }
 -keep class io.flutter.plugins.** { *; }
 
+# Keep App Specific Classes (QuickScan)
+-keep class com.skkhandokar.quickscan.** { *; }
+
 # Keep MainActivity and AndroidX classes
 -keep class androidx.core.app.CoreComponentFactory { *; }
 -keep public class * extends android.app.Activity
 -keep public class * extends android.app.Application
 -keep public class * extends android.app.Service
--keep public class * extends android.br.BroadcastReceiver
+-keep public class * extends android.content.BroadcastReceiver
 
 # Keep Camera and Scanner plugins
 -keep class dev.zxing.** { *; }
