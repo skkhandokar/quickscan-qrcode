@@ -60,8 +60,7 @@ android {
                 "proguard-rules.pro"
             )
         }
-    }
-}
+    }}
 
 flutter {
     source = "../.." 
