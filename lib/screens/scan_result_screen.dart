@@ -666,7 +666,7 @@ import 'package:gal/gal.dart';
 import 'package:pasteboard/pasteboard.dart'; 
 import 'dart:io';
 import '../services/history_service.dart';
-import 'form_screens/generic_form_screen.dart'; // Edit অপশনের জন্য Form screen import
+import './generic_form_screen.dart'; // Edit অপশনের জন্য Form screen import
 
 class ScanResultScreen extends StatefulWidget {
   final String rawValue;
@@ -714,6 +714,69 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     _checkFavoriteStatus();
   }
 
+
+// --- একক QR / Barcode-এর জন্য CSV ডাউনলোড মেথড ---
+  Future<void> _exportSingleQrToCSV() async {
+    try {
+      StringBuffer csvBuilder = StringBuffer();
+      // CSV Header
+      csvBuilder.writeln("ID,Category,Content,Date,Is Barcode");
+
+      String id = widget.itemId ?? DateTime.now().millisecondsSinceEpoch.toString();
+      String excelId = '="$id"';
+      String type = widget.isBarcodeResult ? 'barcode' : 'qr_code';
+      String content = '"${widget.rawValue.replaceAll('"', '""')}"';
+      
+      DateTime now = DateTime.now();
+      String formattedDate = "${now.month}/${now.day}/${now.year % 100} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+
+      csvBuilder.writeln("$excelId,$type,$content,$formattedDate,${widget.isBarcodeResult}");
+
+      if (kIsWeb) {
+        final bytes = Uri.encodeComponent(csvBuilder.toString());
+        final anchor = html.AnchorElement(href: "data:text/csv;charset=utf-8,%EF%BB%BF$bytes")
+          ..setAttribute("download", "quickscan_item_${id}.csv")
+          ..click();
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Item CSV downloaded successfully! 📊'), backgroundColor: Colors.blueAccent),
+        );
+      } else {
+        Directory? directory;
+        if (Platform.isAndroid) {
+          directory = Directory('/storage/emulated/0/Download');
+          if (!await directory.exists()) {
+            directory = await getExternalStorageDirectory();
+          }
+        } else if (Platform.isIOS) {
+          directory = await getApplicationDocumentsDirectory();
+        }
+
+        if (directory != null) {
+          final String filePath = "${directory.path}/quickscan_item_${id}.csv";
+          final File file = File(filePath);
+          await file.writeAsString(csvBuilder.toString());
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('CSV saved to Downloads:\n$filePath 💾'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('CSV Export failed: $e'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
+
+  
   Future<void> _checkFavoriteStatus() async {
     if (widget.itemId != null && widget.itemId!.isNotEmpty) {
       final status = await HistoryService.isFavorite(widget.itemId!);
@@ -1308,7 +1371,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  Widget _buildUniversalBottomBar() {
+  Widget _buildUniversalBottomBar() 
+    
+{
     return Container(
       color: const Color(0xFF1E1E1E),
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1324,6 +1389,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             icon: const Icon(Icons.share, color: Colors.white),
             onPressed: _shareQrAction,
             tooltip: 'Share QR Image',
+          ),
+          // নতুন যুক্ত হওয়া একক CSV ফাইল ডাউনলোড বাটন
+          IconButton(
+            icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
+            onPressed: _exportSingleQrToCSV,
+            tooltip: 'Export CSV Data',
           ),
           _isSaving 
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
