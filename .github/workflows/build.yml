@@ -33,7 +33,7 @@ jobs:
 
       - name: Create key.properties
         run: |
-          cat <<'EOF' > android/key.properties
+          cat <<EOF > android/key.properties
           keyAlias=${{ secrets.KEY_ALIAS }}
           keyPassword=${{ secrets.KEY_PASSWORD }}
           storeFile=upload-keystore.jks
