@@ -1,4 +1,7 @@
 
+
+
+
 // // lib/screens/scan_result_screen.dart
 // import 'dart:convert';
 // import 'dart:ui' as ui;
@@ -10,7 +13,7 @@
 // import 'package:barcode_widget/barcode_widget.dart' as b_widget;
 // import 'package:url_launcher/url_launcher.dart';
 // import 'package:share_plus/share_plus.dart';
-// import 'package:wifi_connector/wifi_connector.dart';
+// import 'package:wifi_iot/wifi_iot.dart'; 
 // import 'package:flutter_contacts/flutter_contacts.dart' as fc; 
 // import 'package:permission_handler/permission_handler.dart';
 // import 'package:universal_html/html.dart' as html; 
@@ -97,26 +100,60 @@
 //     _launchURL("https://www.google.com/search?q=$query");
 //   }
 
+//   // wifi_iot প্যাকেজের সঠিক ক্লাস নাম (WiFiForIoTPlugin) দিয়ে ফিক্স করা লজিক
+//  // wifi_iot v0.3.19+2 এর অফিশিয়াল মেথড (connect) দিয়ে ফিক্স করা লজিক
 //   Future<void> _connectToWifi() async {
 //     final String data = widget.rawValue;
 //     final parts = data.substring(5).split(';');
 //     String ssid = "";
 //     String pass = "";
+//     String security = "WPA"; 
+
 //     for (var part in parts) {
 //       if (part.startsWith('S:')) ssid = part.substring(2);
 //       if (part.startsWith('P:')) pass = part.substring(2);
+//       if (part.startsWith('T:')) security = part.substring(2);
 //     }
+
+//     if (ssid.isEmpty) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid WiFi QR Code: Missing SSID")));
+//       }
+//       return;
+//     }
+
 //     try {
-//       final isConnected = await WifiConnector.connectToWifi(ssid: ssid, password: pass);
-//       if (isConnected && mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Connected successfully!")));
+//       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
+//       if (!isEnabled) {
+//         await WiFiForIoTPlugin.setEnabled(true);
+//         await Future.delayed(const Duration(seconds: 1));
+//       }
+
+//       // v0.3.19+2 সংস্করণের অফিশিয়াল মেথড ও প্যারামিটার লজিক
+//       final isConnected = await WiFiForIoTPlugin.connect(
+//         ssid,
+//         password: pass,
+//         security: NetworkSecurity.values.firstWhere(
+//           (e) => e.toString().split('.').last.toUpperCase() == security.toUpperCase(),
+//           orElse: () => NetworkSecurity.WPA,
+//         ),
+//         joinOnce: false, // নেটওয়ার্কটি মোবাইলে সেভ করে রাখবে
+//       );
+
+//       if (mounted) {
+//         if (isConnected) {
+//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
+//         } else {
+//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text("Failed to connect. Please check credentials.")));
+//         }
 //       }
 //     } catch (e) {
 //       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("WiFi Connection error: $e")));
+//         ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text("WiFi Connection error: $e")));
 //       }
 //     }
 //   }
+
 
 //   void _openInMap() {
 //     String query = widget.rawValue;
@@ -140,7 +177,6 @@
 //   }
 
 //   Future<void> _saveContactFromQR() async {
-//     // FlutterContacts v2 সংস্করণের অফিশিয়াল পারমিশন রিকোয়েস্ট লজিক
 //     final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.readWrite);
 //     if (status == fc.PermissionStatus.granted) {
 //       try {
@@ -153,13 +189,11 @@
 //           phone = widget.rawValue.split('TEL:')[1].split(';')[0];
 //         }
 
-//         // v2-এর প্রোপার্টি অবজেক্ট এবং লেবেল ম্যাপিং ফিক্স
 //         final newContact = fc.Contact(
 //           name: fc.Name(first: name),
 //           phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))] : [],
 //         );
         
-//         // v2 অফিশিয়াল ক্রিয়েট মেথড
 //         await fc.FlutterContacts.create(newContact);
 
 //         if (mounted) {
@@ -468,7 +502,7 @@
 //                           child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
 //                         ),
 //                       );
-//                     }).toList(),
+//                     }),
 //                   ],
 //                 ),
 //               ),
@@ -539,7 +573,6 @@
 //       buttons.add(_actionIconButton(icon: Icons.person_add_alt_1_rounded, label: 'Add contact', onTap: _saveContactFromQR));
 //     }
 //     else if (_isSMS) {
-//       // Void টাইপ এরর ফিক্স করতে Anonymous ফাংশন পাস করা হয়েছে
 //       buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: () => _sendSMS(isMMS: false)));
 //       buttons.add(const SizedBox(width: 20));
 //       buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: () => _sendSMS(isMMS: true)));
@@ -607,6 +640,12 @@
 
 
 
+
+
+
+
+
+
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -627,6 +666,7 @@ import 'package:gal/gal.dart';
 import 'package:pasteboard/pasteboard.dart'; 
 import 'dart:io';
 import '../services/history_service.dart';
+import 'form_screens/generic_form_screen.dart'; // Edit অপশনের জন্য Form screen import
 
 class ScanResultScreen extends StatefulWidget {
   final String rawValue;
@@ -705,9 +745,22 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     _launchURL("https://www.google.com/search?q=$query");
   }
 
-  // wifi_iot প্যাকেজের সঠিক ক্লাস নাম (WiFiForIoTPlugin) দিয়ে ফিক্স করা লজিক
- // wifi_iot v0.3.19+2 এর অফিশিয়াল মেথড (connect) দিয়ে ফিক্স করা লজিক
+  // --- WiFi Connection Fixed with Location Permission ---
   Future<void> _connectToWifi() async {
+    // অ্যান্ড্রয়েড ১০+ ভার্সনে WiFi স্ক্র্যানিং/কানেকশনের জন্য লোকেশন পারমিশন আবশ্যক
+    var locStatus = await Permission.location.request();
+    if (!locStatus.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.orange,
+            content: Text("Location permission & GPS are required to connect WiFi!"),
+          ),
+        );
+      }
+      return;
+    }
+
     final String data = widget.rawValue;
     final parts = data.substring(5).split(';');
     String ssid = "";
@@ -734,22 +787,28 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         await Future.delayed(const Duration(seconds: 1));
       }
 
-      // v0.3.19+2 সংস্করণের অফিশিয়াল মেথড ও প্যারামিটার লজিক
+      NetworkSecurity sec = NetworkSecurity.WPA;
+      final secUpper = security.toUpperCase();
+      if (secUpper.contains('WEP')) {
+        sec = NetworkSecurity.WEP;
+      } else if (secUpper.contains('NOPASS') || secUpper.contains('NO PASS')) {
+        sec = NetworkSecurity.NONE;
+      }
+
       final isConnected = await WiFiForIoTPlugin.connect(
         ssid,
         password: pass,
-        security: NetworkSecurity.values.firstWhere(
-          (e) => e.toString().split('.').last.toUpperCase() == security.toUpperCase(),
-          orElse: () => NetworkSecurity.WPA,
-        ),
-        joinOnce: false, // নেটওয়ার্কটি মোবাইলে সেভ করে রাখবে
+        security: sec,
+        joinOnce: false,
       );
 
       if (mounted) {
         if (isConnected) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text("Failed to connect. Please check credentials.")));
+          // Force connect fallback
+          await WiFiForIoTPlugin.forceWifiUsage(true);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.blueAccent, content: Text("Connecting... Please check Wi-Fi settings.")));
         }
       }
     } catch (e) {
@@ -759,6 +818,45 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
   }
 
+  // --- Dynamic Edit Option Logic ---
+  void _navigateToEditScreen() {
+    String formType = 'text';
+    String title = 'Edit Text';
+
+    if (widget.isBarcodeResult) {
+      formType = 'barcode';
+      title = 'Edit Barcode';
+    } else if (_isUrl) {
+      formType = 'url';
+      title = 'Edit URL';
+    } else if (_isWifi) {
+      formType = 'wifi';
+      title = 'Edit WiFi';
+    } else if (_isEmail) {
+      formType = 'email';
+      title = 'Edit Email';
+    } else if (_isSMS) {
+      formType = 'sms';
+      title = 'Edit SMS';
+    } else if (_isContact) {
+      formType = 'contact';
+      title = 'Edit Contact';
+    } else if (_isPhone) {
+      formType = 'phone';
+      title = 'Edit Phone';
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GenericFormScreen(
+          formType: formType,
+          title: title,
+          isBarcode: widget.isBarcodeResult,
+        ),
+      ),
+    );
+  }
 
   void _openInMap() {
     String query = widget.rawValue;
@@ -821,15 +919,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         );
       }
     }
-  }
-
-  Future<ui.Image?> _loadImageFromFile(String path) async {
-    final file = File(path);
-    if (!await file.exists()) return null;
-    final bytes = await file.readAsBytes();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-    return frame.image;
   }
 
   Future<Uint8List?> _captureQrImage() async {
@@ -1025,6 +1114,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          // Edit Button Top Right Action
+          IconButton(
+            icon: const Icon(Icons.edit_note_rounded, color: Colors.orangeAccent, size: 28),
+            tooltip: 'Edit & Re-generate',
+            onPressed: _navigateToEditScreen,
+          ),
           if (widget.itemId != null)
             IconButton(
               icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber, size: 28),
@@ -1160,6 +1255,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
   List<Widget> _buildDynamicButtons() {
     List<Widget> buttons = [];
+
+    // 1. Edit Button in Dynamic Action List
+    buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
+    buttons.add(const SizedBox(width: 20));
 
     if (_isWifi) {
       buttons.add(_actionIconButton(icon: Icons.wifi, label: 'Connect', onTap: _connectToWifi));
