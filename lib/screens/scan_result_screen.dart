@@ -1,7 +1,6 @@
 
 
 
-
 // // lib/screens/scan_result_screen.dart
 // import 'dart:convert';
 // import 'dart:ui' as ui;
@@ -22,6 +21,7 @@
 // import 'package:pasteboard/pasteboard.dart'; 
 // import 'dart:io';
 // import '../services/history_service.dart';
+// import './generic_form_screen.dart'; // Edit অপশনের জন্য Form screen import
 
 // class ScanResultScreen extends StatefulWidget {
 //   final String rawValue;
@@ -69,6 +69,69 @@
 //     _checkFavoriteStatus();
 //   }
 
+
+// // --- একক QR / Barcode-এর জন্য CSV ডাউনলোড মেথড ---
+//   Future<void> _exportSingleQrToCSV() async {
+//     try {
+//       StringBuffer csvBuilder = StringBuffer();
+//       // CSV Header
+//       csvBuilder.writeln("ID,Category,Content,Date,Is Barcode");
+
+//       String id = widget.itemId ?? DateTime.now().millisecondsSinceEpoch.toString();
+//       String excelId = '="$id"';
+//       String type = widget.isBarcodeResult ? 'barcode' : 'qr_code';
+//       String content = '"${widget.rawValue.replaceAll('"', '""')}"';
+      
+//       DateTime now = DateTime.now();
+//       String formattedDate = "${now.month}/${now.day}/${now.year % 100} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+
+//       csvBuilder.writeln("$excelId,$type,$content,$formattedDate,${widget.isBarcodeResult}");
+
+//       if (kIsWeb) {
+//         final bytes = Uri.encodeComponent(csvBuilder.toString());
+//         final anchor = html.AnchorElement(href: "data:text/csv;charset=utf-8,%EF%BB%BF$bytes")
+//           ..setAttribute("download", "quickscan_item_${id}.csv")
+//           ..click();
+
+//         if (!mounted) return;
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(content: Text('Item CSV downloaded successfully! 📊'), backgroundColor: Colors.blueAccent),
+//         );
+//       } else {
+//         Directory? directory;
+//         if (Platform.isAndroid) {
+//           directory = Directory('/storage/emulated/0/Download');
+//           if (!await directory.exists()) {
+//             directory = await getExternalStorageDirectory();
+//           }
+//         } else if (Platform.isIOS) {
+//           directory = await getApplicationDocumentsDirectory();
+//         }
+
+//         if (directory != null) {
+//           final String filePath = "${directory.path}/quickscan_item_${id}.csv";
+//           final File file = File(filePath);
+//           await file.writeAsString(csvBuilder.toString());
+
+//           if (!mounted) return;
+//           ScaffoldMessenger.of(context).showSnackBar(
+//             SnackBar(
+//               content: Text('CSV saved to Downloads:\n$filePath 💾'),
+//               backgroundColor: Colors.green,
+//               duration: const Duration(seconds: 4),
+//             ),
+//           );
+//         }
+//       }
+//     } catch (e) {
+//       if (!mounted) return;
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(content: Text('CSV Export failed: $e'), backgroundColor: Colors.redAccent),
+//       );
+//     }
+//   }
+
+  
 //   Future<void> _checkFavoriteStatus() async {
 //     if (widget.itemId != null && widget.itemId!.isNotEmpty) {
 //       final status = await HistoryService.isFavorite(widget.itemId!);
@@ -100,9 +163,22 @@
 //     _launchURL("https://www.google.com/search?q=$query");
 //   }
 
-//   // wifi_iot প্যাকেজের সঠিক ক্লাস নাম (WiFiForIoTPlugin) দিয়ে ফিক্স করা লজিক
-//  // wifi_iot v0.3.19+2 এর অফিশিয়াল মেথড (connect) দিয়ে ফিক্স করা লজিক
+//   // --- WiFi Connection Fixed with Location Permission ---
 //   Future<void> _connectToWifi() async {
+//     // অ্যান্ড্রয়েড ১০+ ভার্সনে WiFi স্ক্র্যানিং/কানেকশনের জন্য লোকেশন পারমিশন আবশ্যক
+//     var locStatus = await Permission.location.request();
+//     if (!locStatus.isGranted) {
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             backgroundColor: Colors.orange,
+//             content: Text("Location permission & GPS are required to connect WiFi!"),
+//           ),
+//         );
+//       }
+//       return;
+//     }
+
 //     final String data = widget.rawValue;
 //     final parts = data.substring(5).split(';');
 //     String ssid = "";
@@ -129,22 +205,28 @@
 //         await Future.delayed(const Duration(seconds: 1));
 //       }
 
-//       // v0.3.19+2 সংস্করণের অফিশিয়াল মেথড ও প্যারামিটার লজিক
+//       NetworkSecurity sec = NetworkSecurity.WPA;
+//       final secUpper = security.toUpperCase();
+//       if (secUpper.contains('WEP')) {
+//         sec = NetworkSecurity.WEP;
+//       } else if (secUpper.contains('NOPASS') || secUpper.contains('NO PASS')) {
+//         sec = NetworkSecurity.NONE;
+//       }
+
 //       final isConnected = await WiFiForIoTPlugin.connect(
 //         ssid,
 //         password: pass,
-//         security: NetworkSecurity.values.firstWhere(
-//           (e) => e.toString().split('.').last.toUpperCase() == security.toUpperCase(),
-//           orElse: () => NetworkSecurity.WPA,
-//         ),
-//         joinOnce: false, // নেটওয়ার্কটি মোবাইলে সেভ করে রাখবে
+//         security: sec,
+//         joinOnce: false,
 //       );
 
 //       if (mounted) {
 //         if (isConnected) {
 //           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
 //         } else {
-//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text("Failed to connect. Please check credentials.")));
+//           // Force connect fallback
+//           await WiFiForIoTPlugin.forceWifiUsage(true);
+//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.blueAccent, content: Text("Connecting... Please check Wi-Fi settings.")));
 //         }
 //       }
 //     } catch (e) {
@@ -154,6 +236,45 @@
 //     }
 //   }
 
+//   // --- Dynamic Edit Option Logic ---
+//   void _navigateToEditScreen() {
+//     String formType = 'text';
+//     String title = 'Edit Text';
+
+//     if (widget.isBarcodeResult) {
+//       formType = 'barcode';
+//       title = 'Edit Barcode';
+//     } else if (_isUrl) {
+//       formType = 'url';
+//       title = 'Edit URL';
+//     } else if (_isWifi) {
+//       formType = 'wifi';
+//       title = 'Edit WiFi';
+//     } else if (_isEmail) {
+//       formType = 'email';
+//       title = 'Edit Email';
+//     } else if (_isSMS) {
+//       formType = 'sms';
+//       title = 'Edit SMS';
+//     } else if (_isContact) {
+//       formType = 'contact';
+//       title = 'Edit Contact';
+//     } else if (_isPhone) {
+//       formType = 'phone';
+//       title = 'Edit Phone';
+//     }
+
+//     Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => GenericFormScreen(
+//           formType: formType,
+//           title: title,
+//           isBarcode: widget.isBarcodeResult,
+//         ),
+//       ),
+//     );
+//   }
 
 //   void _openInMap() {
 //     String query = widget.rawValue;
@@ -216,15 +337,6 @@
 //         );
 //       }
 //     }
-//   }
-
-//   Future<ui.Image?> _loadImageFromFile(String path) async {
-//     final file = File(path);
-//     if (!await file.exists()) return null;
-//     final bytes = await file.readAsBytes();
-//     final codec = await ui.instantiateImageCodec(bytes);
-//     final frame = await codec.getNextFrame();
-//     return frame.image;
 //   }
 
 //   Future<Uint8List?> _captureQrImage() async {
@@ -420,6 +532,12 @@
 //         elevation: 0,
 //         iconTheme: const IconThemeData(color: Colors.white),
 //         actions: [
+//           // Edit Button Top Right Action
+//           IconButton(
+//             icon: const Icon(Icons.edit_note_rounded, color: Colors.orangeAccent, size: 28),
+//             tooltip: 'Edit & Re-generate',
+//             onPressed: _navigateToEditScreen,
+//           ),
 //           if (widget.itemId != null)
 //             IconButton(
 //               icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber, size: 28),
@@ -556,6 +674,10 @@
 //   List<Widget> _buildDynamicButtons() {
 //     List<Widget> buttons = [];
 
+//     // 1. Edit Button in Dynamic Action List
+//     buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
+//     buttons.add(const SizedBox(width: 20));
+
 //     if (_isWifi) {
 //       buttons.add(_actionIconButton(icon: Icons.wifi, label: 'Connect', onTap: _connectToWifi));
 //     }
@@ -604,7 +726,9 @@
 //     );
 //   }
 
-//   Widget _buildUniversalBottomBar() {
+//   Widget _buildUniversalBottomBar() 
+    
+// {
 //     return Container(
 //       color: const Color(0xFF1E1E1E),
 //       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -621,6 +745,12 @@
 //             onPressed: _shareQrAction,
 //             tooltip: 'Share QR Image',
 //           ),
+//           // নতুন যুক্ত হওয়া একক CSV ফাইল ডাউনলোড বাটন
+//           IconButton(
+//             icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
+//             onPressed: _exportSingleQrToCSV,
+//             tooltip: 'Export CSV Data',
+//           ),
 //           _isSaving 
 //               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
 //               : IconButton(
@@ -633,6 +763,14 @@
 //     );
 //   }
 // }
+
+
+
+
+
+
+
+
 
 
 
@@ -809,8 +947,8 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   }
 
   // --- WiFi Connection Fixed with Location Permission ---
+ // --- কুইক ওয়াইফাই কানেক্ট মেথড (ডিলে কমানো হয়েছে) ---
   Future<void> _connectToWifi() async {
-    // অ্যান্ড্রয়েড ১০+ ভার্সনে WiFi স্ক্র্যানিং/কানেকশনের জন্য লোকেশন পারমিশন আবশ্যক
     var locStatus = await Permission.location.request();
     if (!locStatus.isGranted) {
       if (mounted) {
@@ -844,10 +982,20 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
 
     try {
+      // মেসেজ দ্রুত দেখানোর জন্য নোটিফিকেশন সাথে সাথে দিন
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.blueAccent,
+            content: Text("Connecting to Wi-Fi... Please wait."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
       if (!isEnabled) {
         await WiFiForIoTPlugin.setEnabled(true);
-        await Future.delayed(const Duration(seconds: 1));
       }
 
       NetworkSecurity sec = NetworkSecurity.WPA;
@@ -869,9 +1017,8 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         if (isConnected) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
         } else {
-          // Force connect fallback
           await WiFiForIoTPlugin.forceWifiUsage(true);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.blueAccent, content: Text("Connecting... Please check Wi-Fi settings.")));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.orangeAccent, content: Text("Please check Wi-Fi settings to confirm connection.")));
         }
       }
     } catch (e) {
@@ -881,7 +1028,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
   }
 
-  // --- Dynamic Edit Option Logic ---
+ // --- এডিটিং স্ক্রিনে ডাটা পাঠানো ---
   void _navigateToEditScreen() {
     String formType = 'text';
     String title = 'Edit Text';
@@ -916,10 +1063,14 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           formType: formType,
           title: title,
           isBarcode: widget.isBarcodeResult,
+          initialData: widget.rawValue, 
         ),
       ),
     );
   }
+
+
+
 
   void _openInMap() {
     String query = widget.rawValue;
