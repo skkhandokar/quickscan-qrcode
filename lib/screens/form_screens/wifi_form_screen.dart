@@ -14,6 +14,7 @@ class _WifiFormScreenState extends State<WifiFormScreen> {
   final TextEditingController _passwordController = TextEditingController();
   String _selectedSecurity = 'WPA/WPA2';
   bool _isHidden = false;
+  bool _isPasswordVisible = false;
 
   void _generateWifiQR() async {
     final String ssid = _ssidController.text.trim();
@@ -92,7 +93,8 @@ class _WifiFormScreenState extends State<WifiFormScreen> {
             const SizedBox(height: 15),
             TextField(
               controller: _passwordController,
-              obscureText: true,
+              obscureText: !_isPasswordVisible,
+             
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 labelText: 'Password',
