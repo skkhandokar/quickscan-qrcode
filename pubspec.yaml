@@ -16,11 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+12
+version: 1.0.0+13
 
 environment:
   sdk: ^3.10.7
-
+#https://qrcode-and-barcode-c6450.web.app
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
 # consider running `flutter pub upgrade --major-versions`. Alternatively,
@@ -51,6 +51,7 @@ dependencies:
   share_plus: ^12.0.2
   pasteboard: ^0.5.0
   flutter_contacts:
+  http: ^1.6.0
 
  
 

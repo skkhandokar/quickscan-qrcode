@@ -1,132 +1,5 @@
-// // lib/screens/create_qr_screen.dart
-// import 'package:flutter/material.dart';
-// import '../widgets/custom_drawer.dart';
-// import 'form_screens/all_forms.dart';
-// import 'create_image_qr_screen.dart'; 
 
-// // ইম্পোর্ট পাথ আপনার প্রজেক্ট স্ট্রাকচার অনুযায়ী নিখুঁত করা হলো
-// import 'form_screens/simple_form_screen.dart'; 
-// import 'form_screens/wifi_form_screen.dart'; 
 
-// class CreateQRScreen extends StatelessWidget {
-//   final Function(Color) onChangeColor;
-//   const CreateQRScreen({super.key, required this.onChangeColor});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // কিউআর টাইপসমূহ
-//     final List<Map<String, dynamic>> qrTypes = [
-//       {'icon': Icons.link, 'title': 'URL', 'tag': 'url'},
-//       {'icon': Icons.text_fields, 'title': 'Text', 'tag': 'text'},
-//       {'icon': Icons.image, 'title': 'Image to QR', 'tag': 'image'}, 
-//       {'icon': Icons.person, 'title': 'Contact', 'tag': 'contact'},
-//       {'icon': Icons.email, 'title': 'Email', 'tag': 'email'},
-//       {'icon': Icons.sms, 'title': 'SMS', 'tag': 'sms'},
-//       {'icon': Icons.location_on, 'title': 'Geo', 'tag': 'geo'},
-//       {'icon': Icons.phone, 'title': 'Phone', 'tag': 'phone'},
-//       {'icon': Icons.calendar_month, 'title': 'Calendar', 'tag': 'calendar'},
-//       {'icon': Icons.wifi, 'title': 'Wifi', 'tag': 'wifi'},
-//     ];
-
-//     // বারকোড টাইপসমূহ
-//     final List<Map<String, dynamic>> barcodeTypes = [
-//       {'title': 'EAN_8', 'tag': 'ean8'},
-//       {'title': 'EAN_13', 'tag': 'ean13'},
-//       {'title': 'UPC_E', 'tag': 'upce'},
-//       {'title': 'UPC_A', 'tag': 'upca'},
-//       {'title': 'CODE_39', 'tag': 'code39'},
-//       {'title': 'CODE_93', 'tag': 'code93'},
-//       {'title': 'CODE_128', 'tag': 'code128'},
-//       {'title': 'ITF', 'tag': 'itf'},
-//       {'title': 'PDF_417', 'tag': 'pdf417'},
-//       {'title': 'CODABAR', 'tag': 'codabar'},
-//     ];
-
-//     return Scaffold(
-//       backgroundColor: Colors.black,
-//       appBar: AppBar(
-//         title: const Text('Create', style: TextStyle(color: Colors.white)),
-//         backgroundColor: Colors.transparent,
-//         elevation: 0,
-//         iconTheme: const IconThemeData(color: Colors.white),
-//       ),
-//       drawer: CustomDrawer(onChangeColor: onChangeColor),
-//       body: SingleChildScrollView(
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             ListView.separated(
-//               physics: const NeverScrollableScrollPhysics(),
-//               shrinkWrap: true,
-//               itemCount: qrTypes.length,
-//               separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
-//               itemBuilder: (context, index) {
-//                 final item = qrTypes[index];
-//                 return ListTile(
-//                   leading: Icon(item['icon'], color: Colors.white70),
-//                   title: Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 16)),
-//                   onTap: () {
-//                     // ১. ইমেজ কিউআর হলে ডেডিকেটেড স্ক্রিনে যাবে
-//                     if (item['tag'] == 'image') {
-//                       Navigator.push(context, MaterialPageRoute(
-//                         builder: (context) => const CreateImageQRScreen(),
-//                       ));
-//                     } 
-//                     // ২. ওয়াইফাই কিউআর হলে সরাসরি WifiFormScreen-এ যাবে
-//                     else if (item['tag'] == 'wifi') {
-//                       Navigator.push(context, MaterialPageRoute(
-//                         builder: (context) => const WifiFormScreen(),
-//                       ));
-//                     } 
-//                     // ৩. টেক্সট কিউআর হলে সরাসরি SimpleFormScreen-এ যাবে
-//                     else if (item['tag'] == 'text') {
-//                       Navigator.push(context, MaterialPageRoute(
-//                         builder: (context) => const SimpleFormScreen(title: 'Text'),
-//                       ));
-//                     } 
-//                     // ৪. অন্য সব সাধারণ কিউআর টাইপের জন্য GenericFormScreen (all_forms) এ যাবে
-//                     else {
-//                       Navigator.push(context, MaterialPageRoute(
-//                         builder: (context) => GenericFormScreen(formType: item['tag'], title: item['title']),
-//                       ));
-//                     }
-//                   },
-//                 );
-//               },
-//             ),
-            
-//             const Padding(
-//               padding: EdgeInsets.only(left: 16.0, top: 20, bottom: 10),
-//               child: Text(
-//                 'Other types',
-//                 style: TextStyle(color: Colors.white54, fontSize: 14, fontWeight: FontWeight.bold),
-//               ),
-//             ),
-
-//             ListView.separated(
-//               physics: const NeverScrollableScrollPhysics(),
-//               shrinkWrap: true,
-//               itemCount: barcodeTypes.length,
-//               separatorBuilder: (context, index) => const Divider(color: Colors.white10, height: 1),
-//               itemBuilder: (context, index) {
-//                 final item = barcodeTypes[index];
-//                 return ListTile(
-//                   leading: const Icon(Icons.reorder, color: Colors.white70),
-//                   title: Text(item['title'], style: const TextStyle(color: Colors.white, fontSize: 16)),
-//                   onTap: () {
-//                     Navigator.push(context, MaterialPageRoute(
-//                       builder: (context) => GenericFormScreen(formType: item['tag'], title: item['title'], isBarcode: true),
-//                     ));
-//                   },
-//                 );
-//               },
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 
 
 
@@ -144,15 +17,22 @@
 // }
 
 // class _CreateQRScreenState extends State<CreateQRScreen> {
-//   // নতুন ৩টি টাইপ (সোশ্যাল মিডিয়া, পেমেন্ট ও ড্রাইভ ফাইল) সহ আপডেট করা কিউআর লিস্ট
+//   // নতুন ১টি অপশন (Clipboard to QR) সহ আপডেট করা কিউআর লিস্ট
 //   final List<Map<String, dynamic>> _qrOptions = [
+//     // --- নতুন সংযোজন: ক্লিপবোর্ড টু কিউআর ফিচার ---
+//     {
+//       'icon': Icons.assignment_returned,
+//       'title': 'Clipboard to QR',
+//       'type': 'text', 
+//       'color': Colors.greenAccent.shade400,
+//     },
 //     {
 //       'icon': Icons.link,
 //       'title': 'Website URL',
 //       'type': 'url',
 //       'color': Colors.blue,
 //     },
-//     // --- ১. সোশ্যাল মিডিয়া হাব (WhatsApp, FB, YouTube এর জন্য কাস্টমাইজড) ---
+//     // --- ১. সোশ্যাল মিডিয়া হাব ---
 //     {
 //       'icon': Icons.chat_rounded,
 //       'title': 'WhatsApp Chat',
@@ -163,7 +43,7 @@
 //       'icon': Icons.facebook,
 //       'title': 'Facebook Page',
 //       'type': 'url',
-//       'color': const Color(0xFF1877F2), // ফেসবুক অফিশিয়াল ব্লু
+//       'color': const Color(0xFF1877F2),
 //     },
 //     {
 //       'icon': Icons.play_circle_fill_rounded,
@@ -178,14 +58,14 @@
 //       'type': 'url',
 //       'color': Colors.amber.shade700,
 //     },
-//     // --- ৩. ফাইল ও ক্লাউড শেয়ারিং ---
+//     // --- ৩. ফাইল ও ক্লাউড শেয়ারিং ---
 //     {
 //       'icon': Icons.cloud_circle_rounded,
 //       'title': 'Google Drive / PDF',
 //       'type': 'url',
 //       'color': Colors.blue.shade700,
 //     },
-//     // --- আগের বাকি স্ট্যান্ডার্ড ক্যাটাগরিগুলো ---
+//     // --- স্ট্যান্ডার্ড ক্যাটাগরিগুলো ---
 //     {
 //       'icon': Icons.text_fields,
 //       'title': 'Plain Text',
@@ -241,6 +121,10 @@
 //     {'title': 'EAN-13', 'type': 'ean13'},
 //     {'title': 'Code 128', 'type': 'code128'},
 //     {'title': 'UPC-A', 'type': 'upca'},
+//     {'title': 'UPC-E (Compact Retail)', 'type': 'upce'},
+//     {'title': 'Code 39 (Alphanumeric)', 'type': 'code39'},
+//     {'title': 'ISBN (Book Barcode)', 'type': 'isbn'},
+//     {'title': 'ITF-14 (Shipping Carton)', 'type': 'itf14'},
 //   ];
 
 //   @override
@@ -267,7 +151,7 @@
 //         drawer: CustomDrawer(onChangeColor: widget.onChangeColor),
 //         body: TabBarView(
 //           children: [
-//             // কিউআর কোড অপশনগুলোর গ্রিড ভিউ (নতুন টাইপ সহ)
+//             // ১. কিউআর কোড অপশনগুলোর গ্রিড ভিউ
 //             GridView.builder(
 //               padding: const EdgeInsets.all(20.0),
 //               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -316,7 +200,7 @@
 //               },
 //             ),
 
-//             // বারকোড অপশনগুলোর গ্রিড ভিউ
+//             // ২. বারকোড অপশনগুলোর গ্রিড ভিউ
 //             GridView.builder(
 //               padding: const EdgeInsets.all(20.0),
 //               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -375,6 +259,13 @@
 
 
 
+
+
+
+
+
+
+
 // lib/screens/create_qr_screen.dart
 import 'package:flutter/material.dart';
 import '../widgets/custom_drawer.dart';
@@ -389,9 +280,16 @@ class CreateQRScreen extends StatefulWidget {
 }
 
 class _CreateQRScreenState extends State<CreateQRScreen> {
-  // নতুন ১টি অপশন (Clipboard to QR) সহ আপডেট করা কিউআর লিস্ট
+  // ফাইল টু কিউআর সহ আপডেট করা কিউআর লিস্ট
   final List<Map<String, dynamic>> _qrOptions = [
-    // --- নতুন সংযোজন: ক্লিপবোর্ড টু কিউআর ফিচার ---
+    // --- নতুন সংযোজন: ফাইল টু কিউআর অপশন ---
+    {
+      'icon': Icons.attach_file_rounded,
+      'title': 'File to QR',
+      'type': 'file', 
+      'color': Colors.deepOrangeAccent,
+    },
+    // --- ক্লিপবোর্ড টু কিউআর ---
     {
       'icon': Icons.assignment_returned,
       'title': 'Clipboard to QR',
