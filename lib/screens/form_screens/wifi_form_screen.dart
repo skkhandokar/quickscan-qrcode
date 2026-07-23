@@ -94,7 +94,6 @@ class _WifiFormScreenState extends State<WifiFormScreen> {
             TextField(
               controller: _passwordController,
               obscureText: !_isPasswordVisible,
-             
               style: const TextStyle(color: Colors.white),
               decoration: const InputDecoration(
                 labelText: 'Password',
