@@ -1,6 +1,5 @@
 
 
-
 // // lib/screens/scan_result_screen.dart
 // import 'dart:convert';
 // import 'dart:ui' as ui;
@@ -164,8 +163,8 @@
 //   }
 
 //   // --- WiFi Connection Fixed with Location Permission ---
+//  // --- কুইক ওয়াইফাই কানেক্ট মেথড (ডিলে কমানো হয়েছে) ---
 //   Future<void> _connectToWifi() async {
-//     // অ্যান্ড্রয়েড ১০+ ভার্সনে WiFi স্ক্র্যানিং/কানেকশনের জন্য লোকেশন পারমিশন আবশ্যক
 //     var locStatus = await Permission.location.request();
 //     if (!locStatus.isGranted) {
 //       if (mounted) {
@@ -199,10 +198,20 @@
 //     }
 
 //     try {
+//       // মেসেজ দ্রুত দেখানোর জন্য নোটিফিকেশন সাথে সাথে দিন
+//       if (mounted) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(
+//             backgroundColor: Colors.blueAccent,
+//             content: Text("Connecting to Wi-Fi... Please wait."),
+//             duration: Duration(seconds: 2),
+//           ),
+//         );
+//       }
+
 //       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
 //       if (!isEnabled) {
 //         await WiFiForIoTPlugin.setEnabled(true);
-//         await Future.delayed(const Duration(seconds: 1));
 //       }
 
 //       NetworkSecurity sec = NetworkSecurity.WPA;
@@ -224,9 +233,8 @@
 //         if (isConnected) {
 //           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
 //         } else {
-//           // Force connect fallback
 //           await WiFiForIoTPlugin.forceWifiUsage(true);
-//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.blueAccent, content: Text("Connecting... Please check Wi-Fi settings.")));
+//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.orangeAccent, content: Text("Please check Wi-Fi settings to confirm connection.")));
 //         }
 //       }
 //     } catch (e) {
@@ -236,7 +244,7 @@
 //     }
 //   }
 
-//   // --- Dynamic Edit Option Logic ---
+//  // --- এডিটিং স্ক্রিনে ডাটা পাঠানো ---
 //   void _navigateToEditScreen() {
 //     String formType = 'text';
 //     String title = 'Edit Text';
@@ -271,10 +279,14 @@
 //           formType: formType,
 //           title: title,
 //           isBarcode: widget.isBarcodeResult,
+//           initialData: widget.rawValue, 
 //         ),
 //       ),
 //     );
 //   }
+
+
+
 
 //   void _openInMap() {
 //     String query = widget.rawValue;
@@ -773,17 +785,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
 // lib/screens/scan_result_screen.dart
 import 'dart:convert';
 import 'dart:ui' as ui;
@@ -804,7 +805,7 @@ import 'package:gal/gal.dart';
 import 'package:pasteboard/pasteboard.dart'; 
 import 'dart:io';
 import '../services/history_service.dart';
-import './generic_form_screen.dart'; // Edit অপশনের জন্য Form screen import
+import './generic_form_screen.dart'; 
 
 class ScanResultScreen extends StatefulWidget {
   final String rawValue;
@@ -852,12 +853,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     _checkFavoriteStatus();
   }
 
-
-// --- একক QR / Barcode-এর জন্য CSV ডাউনলোড মেথড ---
+  // --- একক QR / Barcode-এর জন্য CSV ডাউনলোড মেথড ---
   Future<void> _exportSingleQrToCSV() async {
     try {
       StringBuffer csvBuilder = StringBuffer();
-      // CSV Header
       csvBuilder.writeln("ID,Category,Content,Date,Is Barcode");
 
       String id = widget.itemId ?? DateTime.now().millisecondsSinceEpoch.toString();
@@ -914,7 +913,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
   }
 
-  
   Future<void> _checkFavoriteStatus() async {
     if (widget.itemId != null && widget.itemId!.isNotEmpty) {
       final status = await HistoryService.isFavorite(widget.itemId!);
@@ -934,20 +932,71 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   bool get _isUrl => widget.rawValue.startsWith('http://') || widget.rawValue.startsWith('https://');
   bool get _isContact => widget.rawValue.startsWith('MCARD:') || widget.rawValue.startsWith('BEGIN:VCARD');
 
+  // 🚀 [সংশোধিত] ইউনিভার্সাল URL Launching Method
   Future<void> _launchURL(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
+    try {
+      String formattedUrl = urlString.trim();
+
+      // যদি প্রোটোকল না থাকে তবে https:// যুক্ত করা
+      if (!formattedUrl.startsWith('http://') && 
+          !formattedUrl.startsWith('https://') && 
+          !formattedUrl.startsWith('mailto:') && 
+          !formattedUrl.startsWith('tel:') && 
+          !formattedUrl.startsWith('sms:') && 
+          !formattedUrl.startsWith('mms:') && 
+          !formattedUrl.startsWith('geo:')) {
+        formattedUrl = 'https://$formattedUrl';
+      }
+
+      final Uri url = Uri.parse(formattedUrl);
+      
+      // External Application মোডে সরাসরি ওপেন করার চেষ্টা
+      bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+      
+      if (!launched) {
+        // ফলব্যাক মোড
+        await launchUrl(url, mode: LaunchMode.platformDefault);
+      }
+    } catch (e) {
+      debugPrint("Could not launch $urlString: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(backgroundColor: Colors.redAccent, content: Text("Cannot open link: $e")),
+        );
+      }
     }
   }
 
+  // 🔍 [সংশোধিত] Google Search Method
   void _searchOnGoogle() {
-    final String query = Uri.encodeComponent(widget.rawValue);
+    final String query = Uri.encodeComponent(widget.rawValue.trim());
     _launchURL("https://www.google.com/search?q=$query");
   }
 
-  // --- WiFi Connection Fixed with Location Permission ---
- // --- কুইক ওয়াইফাই কানেক্ট মেথড (ডিলে কমানো হয়েছে) ---
+  // 🗺️ [সংশোধিত] Open Map Method
+  void _openInMap() {
+    String query = widget.rawValue;
+    if (_isGeo) {
+      query = widget.rawValue.replaceAll('geo:', '');
+    }
+    _launchURL("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}");
+  }
+
+  // 📧 [সংশোধিত] Email Sending Method
+  void _sendEmail() {
+    String email = widget.rawValue;
+    if (email.startsWith('MATMSG:')) {
+      RegExp toExp = RegExp(r'TO:(.*?);');
+      if (toExp.hasMatch(email)) {
+        email = toExp.firstMatch(email)!.group(1) ?? '';
+      }
+    } else if (email.startsWith('mailto:')) {
+      email = email.replaceAll('mailto:', '');
+    }
+    _launchURL("mailto:${email.trim()}");
+  }
+
+  // --- WiFi Connection ---
   Future<void> _connectToWifi() async {
     var locStatus = await Permission.location.request();
     if (!locStatus.isGranted) {
@@ -982,7 +1031,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
 
     try {
-      // মেসেজ দ্রুত দেখানোর জন্য নোটিফিকেশন সাথে সাথে দিন
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1028,7 +1076,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
   }
 
- // --- এডিটিং স্ক্রিনে ডাটা পাঠানো ---
   void _navigateToEditScreen() {
     String formType = 'text';
     String title = 'Edit Text';
@@ -1067,17 +1114,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         ),
       ),
     );
-  }
-
-
-
-
-  void _openInMap() {
-    String query = widget.rawValue;
-    if (_isGeo) {
-      query = widget.rawValue.replaceAll('geo:', '');
-    }
-    _launchURL("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}");
   }
 
   void _sendSMS({bool isMMS = false}) {
@@ -1328,7 +1364,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
-          // Edit Button Top Right Action
           IconButton(
             icon: const Icon(Icons.edit_note_rounded, color: Colors.orangeAccent, size: 28),
             tooltip: 'Edit & Re-generate',
@@ -1481,7 +1516,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       buttons.add(_actionIconButton(
         icon: Icons.email_outlined,
         label: 'Send Email',
-        onTap: () => _launchURL("mailto:${widget.rawValue.replaceAll('MATMSG:TO:', '').split(';')[0]}"),
+        onTap: _sendEmail, // 👈 আপডেট করা ইমেইল ফাংশন
       ));
     }
     else if (_isPhone) {
@@ -1522,9 +1557,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  Widget _buildUniversalBottomBar() 
-    
-{
+  Widget _buildUniversalBottomBar() {
     return Container(
       color: const Color(0xFF1E1E1E),
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1541,7 +1574,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             onPressed: _shareQrAction,
             tooltip: 'Share QR Image',
           ),
-          // নতুন যুক্ত হওয়া একক CSV ফাইল ডাউনলোড বাটন
           IconButton(
             icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
             onPressed: _exportSingleQrToCSV,
