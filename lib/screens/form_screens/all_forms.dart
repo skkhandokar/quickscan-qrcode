@@ -323,7 +323,6 @@
 
 
 
-
 // lib/screens/form_screens/all_forms.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -357,7 +356,8 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   final Map<String, TextEditingController> controllers = {};
   bool _isAllDay = false;
   bool _isHidden = false;
-  bool _isUploadingFile = false; // আপলোডিং লোডার ট্র্যাকিং
+  bool _isUploadingFile = false; 
+  bool _isWifiPassVisible = false; // 👁️ ওয়াইফাই পাসওয়ার্ড হাইড/শো ট্র্যাকিং
   String _wifiSecurity = 'WPA/WPA2';
 
   Color selectedQrColor = Colors.black;
@@ -533,11 +533,13 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     });
   }
 
-  // 📂 ফোন মেমোরি থেকে ফাইল সিলেক্টের মেথড
-// 📂 ফাইল সিলেক্ট করার আপডেট মেথড
+  // 📂 ফোন মেমোরি থেকে ফাইল সিলেক্ট করার সঠিক মেথড
+ // 📂 ফোন মেমোরি থেকে ফাইল সিলেক্ট করার মেথড (Old/Legacy FilePicker Support)
   Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.any);
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.any,
+      );
       
       if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
         setState(() {
@@ -549,27 +551,40 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       debugPrint("File picker error: $e");
     }
   }
-
-  // 📤 ক্লাউডে ফাইল আপলোড করার মেথড
+  // 📤 ক্লাউডে ফাইল আপলোড করার মেথড (৫টি একাউন্ট ব্যাকআপ সহ)
   Future<String?> _uploadSelectedFile() async {
     if (_selectedFile == null) return null;
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://api.cloudinary.com/v1_1/demo/auto/upload'),
-      )
-        ..fields['upload_preset'] = 'docs_upload_example_us_preset'
-        ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
 
-      var response = await request.send();
-      if (response.statusCode == 200) {
-        var responseData = await response.stream.bytesToString();
-        var jsonMap = jsonDecode(responseData);
-        return jsonMap['secure_url'];
+    final List<Map<String, String>> cloudinaryAccounts = [
+      {'cloudName': 'e9rcvrwi', 'preset': 'quickscan_preset1'},
+      {'cloudName': 'lqm3fzki', 'preset': 'quickscan_preset2'},
+      {'cloudName': 'xxshdsfp', 'preset': 'quickscan_preset3'},
+      {'cloudName': 'f5vsfkzv', 'preset': 'quickscan_preset4'},
+      {'cloudName': 'xtjos6jz', 'preset': 'quickscan_preset5'},
+    ];
+
+    for (var acc in cloudinaryAccounts) {
+      try {
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('https://api.cloudinary.com/v1_1/${acc['cloudName']}/auto/upload'),
+        )
+          ..fields['upload_preset'] = acc['preset']!
+          ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
+
+        var response = await request.send();
+        if (response.statusCode == 200) {
+          var responseData = await response.stream.bytesToString();
+          var jsonMap = jsonDecode(responseData);
+          return jsonMap['secure_url']; 
+        } else {
+          debugPrint("Failed on ${acc['cloudName']}. Status: ${response.statusCode}");
+        }
+      } catch (e) {
+        debugPrint("Error on ${acc['cloudName']}: $e");
       }
-    } catch (e) {
-      debugPrint("File upload error: $e");
     }
+
     return null;
   }
 
@@ -674,15 +689,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
 
       await HistoryService.addToStorage(
         isMyQR: true,
-        type: widget.isBarcode ? 'barcode' : widget.formType,
-        title: displayTitle,
-        isBarcode: widget.isBarcode,
-        barcodeTypeTag: widget.formType,
-        customId: commonId,
-      );
-
-      await HistoryService.addToStorage(
-        isMyQR: false,
         type: widget.isBarcode ? 'barcode' : widget.formType,
         title: displayTitle,
         isBarcode: widget.isBarcode,
@@ -882,7 +888,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   }
 
   List<Widget> _buildFormFields() {
-    // 📂 File to QR Field Option
     if (widget.formType == 'file') {
       return [
         Container(
@@ -924,7 +929,17 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     if (widget.formType == 'wifi') { 
       return [
         _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
-        _customTextField(controllers['wifi_pass']!, 'Password', obscureText: true),
+        _customTextField(
+          controllers['wifi_pass']!, 
+          'Password', 
+          isPassword: true,
+          obscureText: !_isWifiPassVisible,
+          onToggleVisibility: () {
+            setState(() {
+              _isWifiPassVisible = !_isWifiPassVisible;
+            });
+          },
+        ),
         const SizedBox(height: 5),
         DropdownButtonFormField<String>(
           initialValue: _wifiSecurity,
@@ -1023,6 +1038,8 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     String label, {
     int maxLines = 1, 
     bool obscureText = false, 
+    bool isPassword = false,
+    VoidCallback? onToggleVisibility,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
@@ -1045,6 +1062,15 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
             focusedBorder: OutlineInputBorder(
               borderSide: BorderSide(color: Theme.of(context).primaryColor),
             ),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white54,
+                    ),
+                    onPressed: onToggleVisibility,
+                  )
+                : null,
           ),
         ),
       ),

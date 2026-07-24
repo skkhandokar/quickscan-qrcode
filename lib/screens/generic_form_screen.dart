@@ -573,27 +573,19 @@
 
 
 
-
-
-
-
-
-
-
-
-
 // lib/screens/form_screens/generic_form_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart'; // গ্যালারি থেকে ছবি সিলেক্টের জন্য
-import 'package:file_picker/file_picker.dart'; // ফাইল পিক করার জন্য
+import 'package:image_picker/image_picker.dart'; 
+import 'package:file_picker/file_picker.dart'; 
 import 'dart:io';
 import 'dart:convert';
 import './scan_result_screen.dart';
 import '../../services/history_service.dart'; 
 
 bool _isWifiPassVisible = false;
+
 class GenericFormScreen extends StatefulWidget {
   final String formType;
   final String title;
@@ -616,7 +608,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   final Map<String, TextEditingController> controllers = {};
   bool _isAllDay = false;
   bool _isHidden = false;
-  bool _isUploadingFile = false; // ফাইল আপলোডিং প্রোগ্রেস ট্র্যাকিং
+  bool _isUploadingFile = false; 
   String _wifiSecurity = 'WPA/WPA2';
 
   Color selectedQrColor = Colors.black;
@@ -626,7 +618,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   File? _customLogoFile;
   final ImagePicker _picker = ImagePicker();
 
-  // --- ফাইল সিলেক্ট সংক্রান্ত ভেরিয়েবল ---
+  // --- ফাইল সিলেক্ট সংক্রান্ত ভেরিয়েবল ---
   File? _selectedFile;
   String? _selectedFileName;
 
@@ -799,11 +791,13 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     });
   }
 
-  // 📂 ফাইল সিলেক্ট করার মেথড
- // 📂 ফাইল সিলেক্ট করার আপডেট মেথড
+  // 📂 ফাইল সিলেক্ট করার সঠিক মেথড (Mobile Only)
+ // 📂 ফাইল সিলেক্ট করার মেথড (Old/Legacy FilePicker Package Support)
   Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.any);
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.any,
+      );
       
       if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
         setState(() {
@@ -816,27 +810,42 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     }
   }
 
-  // 📤 ক্লাউডে ফাইল আপলোড করার মেথড (ফাইল থেকে URL তৈরি)
+
+  // 📤 Cloudinary-তে ফাইল আপলোড মেথড (৫টি অ্যাকাউন্ট ব্যাকআপ সহ)
   Future<String?> _uploadSelectedFile() async {
     if (_selectedFile == null) return null;
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://api.cloudinary.com/v1_1/demo/auto/upload'),
-      )
-        ..fields['upload_preset'] = 'docs_upload_example_us_preset'
-        ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
 
-      var response = await request.send();
-      if (response.statusCode == 200) {
-        var responseData = await response.stream.bytesToString();
-        var jsonMap = jsonDecode(responseData);
-        return jsonMap['secure_url'];
+    final List<Map<String, String>> cloudinaryAccounts = [
+      {'cloudName': 'e9rcvrwi', 'preset': 'quickscan_preset1'},
+      {'cloudName': 'lqm3fzki', 'preset': 'quickscan_preset2'},
+      {'cloudName': 'xxshdsfp', 'preset': 'quickscan_preset3'},
+      {'cloudName': 'f5vsfkzv', 'preset': 'quickscan_preset4'},
+      {'cloudName': 'xtjos6jz', 'preset': 'quickscan_preset5'},
+    ];
+
+    for (var acc in cloudinaryAccounts) {
+      try {
+        var request = http.MultipartRequest(
+          'POST',
+          Uri.parse('https://api.cloudinary.com/v1_1/${acc['cloudName']}/auto/upload'),
+        )
+          ..fields['upload_preset'] = acc['preset']!
+          ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
+
+        var response = await request.send();
+        if (response.statusCode == 200) {
+          var responseData = await response.stream.bytesToString();
+          var jsonMap = jsonDecode(responseData);
+          return jsonMap['secure_url']; 
+        } else {
+          debugPrint("Failed on ${acc['cloudName']}. Status: ${response.statusCode}");
+        }
+      } catch (e) {
+        debugPrint("Error on ${acc['cloudName']}: $e");
       }
-    } catch (e) {
-      print("Upload Error: $e");
     }
-    return null;
+
+    return null; 
   }
 
   // 🔗 URL Shortener মেথড
@@ -851,7 +860,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
         return data['result_url'] ?? longUrl;
       }
     } catch (e) {
-      print("Shortening error: $e");
+      debugPrint("Shortening error: $e");
     }
     return longUrl; 
   }
@@ -864,7 +873,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   void _submitForm() async {
     String finalData = "";
     
-    // ১. ফাইল টাইপ ফর্ম হ্যান্ডলিং
     if (widget.formType == 'file') {
       if (_selectedFile == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1136,7 +1144,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   }
 
   List<Widget> _buildFormFields() {
-    // 📂 File to QR Form Field
     if (widget.formType == 'file') {
       return [
         Container(
@@ -1180,44 +1187,41 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       case 'text': return [_customTextField(controllers['text']!, 'Enter Text Content', maxLines: 5)];
       case 'phone': return [_customTextField(controllers['phone_single']!, 'Phone', keyboardType: TextInputType.phone)];
       case 'wifi':
-  return [
-    _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
-    
-    // 👁️ আই বাটন সহ পাসওয়ার্ড ফিল্ড
-    _customTextField(
-      controllers['wifi_pass']!, 
-      'Password', 
-      isPassword: true,
-      obscureText: !_isWifiPassVisible,
-      onToggleVisibility: () {
-        setState(() {
-          _isWifiPassVisible = !_isWifiPassVisible;
-        });
-      },
-    ),
-    
-    DropdownButtonFormField<String>(
-      initialValue: _wifiSecurity,
-      dropdownColor: const Color(0xFF1E1E1E),
-      style: const TextStyle(color: Colors.white),
-      decoration: const InputDecoration(
-        labelText: 'Security Type', 
-        labelStyle: TextStyle(color: Colors.white54), 
-        border: OutlineInputBorder()
-      ),
-      items: ['WPA/WPA2', 'WEP', 'no pass'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-      onChanged: (v) => setState(() => _wifiSecurity = v!),
-    ),
-    Row(
-      children: [
-        Checkbox(
-          value: _isHidden, 
-          onChanged: (v) => setState(() => _isHidden = v!)
-        ), 
-        const Text('Hidden Network', style: TextStyle(color: Colors.white70))
-      ]
-    ),
-  ];
+        return [
+          _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
+          _customTextField(
+            controllers['wifi_pass']!, 
+            'Password', 
+            isPassword: true,
+            obscureText: !_isWifiPassVisible,
+            onToggleVisibility: () {
+              setState(() {
+                _isWifiPassVisible = !_isWifiPassVisible;
+              });
+            },
+          ),
+          DropdownButtonFormField<String>(
+            initialValue: _wifiSecurity,
+            dropdownColor: const Color(0xFF1E1E1E),
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(
+              labelText: 'Security Type', 
+              labelStyle: TextStyle(color: Colors.white54), 
+              border: OutlineInputBorder()
+            ),
+            items: ['WPA/WPA2', 'WEP', 'no pass'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+            onChanged: (v) => setState(() => _wifiSecurity = v!),
+          ),
+          Row(
+            children: [
+              Checkbox(
+                value: _isHidden, 
+                onChanged: (v) => setState(() => _isHidden = v!)
+              ), 
+              const Text('Hidden Network', style: TextStyle(color: Colors.white70))
+            ]
+          ),
+        ];
       case 'email':
         return [
           _customTextField(controllers['email']!, 'Email Address', keyboardType: TextInputType.emailAddress),
@@ -1233,7 +1237,13 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       case 'calendar':
         return [
           _customTextField(controllers['event']!, 'Event name'),
-          CheckboxListTile(title: const Text("All day event", style: TextStyle(color: Colors.white70)), value: _isAllDay, controlAffinity: ListTileControlAffinity.leading, contentPadding: EdgeInsets.zero, onChanged: (v) => setState(() => _isAllDay = v!)),
+          CheckboxListTile(
+            title: const Text("All day event", style: TextStyle(color: Colors.white70)), 
+            value: _isAllDay, 
+            controlAffinity: ListTileControlAffinity.leading, 
+            contentPadding: EdgeInsets.zero, 
+            onChanged: (v) => setState(() => _isAllDay = v!)
+          ),
           _customTextField(controllers['location']!, 'Location'),
           _customTextField(controllers['desc']!, 'Description', maxLines: 3),
         ];
@@ -1256,47 +1266,46 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   }
 
   Widget _customTextField(
-  TextEditingController controller, 
-  String label, {
-  int maxLines = 1, 
-  bool obscureText = false, 
-  bool isPassword = false, 
-  VoidCallback? onToggleVisibility,
-  TextInputType keyboardType = TextInputType.text,
-}) {
-  return Padding(
-    padding: const EdgeInsets.only(bottom: 15.0),
-    child: Material(
-      color: Colors.transparent,
-      child: TextField(
-        controller: controller,
-        maxLines: maxLines,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white54),
-          border: const OutlineInputBorder(),
-          enabledBorder: const OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.white24),
+    TextEditingController controller, 
+    String label, {
+    int maxLines = 1, 
+    bool obscureText = false, 
+    bool isPassword = false, 
+    VoidCallback? onToggleVisibility,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15.0),
+      child: Material(
+        color: Colors.transparent,
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: const TextStyle(color: Colors.white54),
+            border: const OutlineInputBorder(),
+            enabledBorder: const OutlineInputBorder(
+              borderSide: BorderSide(color: Colors.white24),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderSide: BorderSide(color: Theme.of(context).primaryColor),
+            ),
+            suffixIcon: isPassword
+                ? IconButton(
+                    icon: Icon(
+                      obscureText ? Icons.visibility_off : Icons.visibility,
+                      color: Colors.white54,
+                    ),
+                    onPressed: onToggleVisibility,
+                  )
+                : null,
           ),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Theme.of(context).primaryColor),
-          ),
-          // 👁️ পাসওয়ার্ড ফিল্ড হলে এখানে চোখের বাটনটি জেনারেট হবে
-          suffixIcon: isPassword
-              ? IconButton(
-                  icon: Icon(
-                    obscureText ? Icons.visibility_off : Icons.visibility,
-                    color: Colors.white54,
-                  ),
-                  onPressed: onToggleVisibility,
-                )
-              : null,
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
