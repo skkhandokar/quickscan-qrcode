@@ -974,22 +974,27 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     });
   }
 
-  Future<void> _pickFile() async {
-    try {
-      FilePickerResult? result = await FilePicker.pickFiles(
-        type: FileType.any,
-      );
-      
-      if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
-        setState(() {
-          _selectedFile = File(result.files.single.path!);
-          _selectedFileName = result.files.single.name;
-        });
-      }
-    } catch (e) {
-      debugPrint("File picker error: $e");
+
+// 📂 file_picker-এর সকল ভার্সনে কাজ করার নিশ্চিত কোড
+// 📂 FilePicker এর জন্য ১০০% সঠিক মেথড
+Future<void> _pickFile() async {
+  try {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+    );
+    
+    if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+      setState(() {
+        _selectedFile = File(result.files.single.path!);
+        _selectedFileName = result.files.single.name;
+      });
     }
+  } catch (e) {
+    debugPrint("File picker error: $e");
   }
+}
+
+
 
   Future<String?> _uploadSelectedFile() async {
     if (_selectedFile == null) return null;

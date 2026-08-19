@@ -533,11 +533,12 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     });
   }
 
-  // 📂 ফোন মেমোরি থেকে ফাইল সিলেক্ট করার সঠিক মেথড
- // 📂 ফোন মেমোরি থেকে ফাইল সিলেক্ট করার মেথড (Old/Legacy FilePicker Support)
-  Future<void> _pickFile() async {
+ 
+ 
+ Future<void> _pickFile() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles(
+      // 💡 FilePicker.pickFiles এর জায়গায় FilePicker.platform.pickFiles ব্যবহার করুন
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.any,
       );
       
