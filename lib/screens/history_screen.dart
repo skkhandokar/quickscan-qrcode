@@ -592,11 +592,11 @@ Future<void> _exportBackup() async {
 }
 
 
-
- Future<void> _importBackup() async {
+// --- ১০০% প্ল্যাটফর্ম ইন্ডিপেন্ডেন্ট ব্যাকআপ ইমপোর্ট মেথড ---
+  Future<void> _importBackup() async {
     try {
-      // 💡 FilePicker.pickFiles এর জায়গায় FilePicker.platform.pickFiles ব্যবহার করুন
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      // withData: true রাখায় ফাইল মেমোরিতে বাইট আকারে লোড হবে
+      FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
         withData: true, 
@@ -606,11 +606,11 @@ Future<void> _exportBackup() async {
         PlatformFile file = result.files.first;
         String csvRawString = "";
 
-        // ১. সরাসরি বাইট থেকে টেক্সট কনভার্ট
+        // ১. সরাসরি বাইট থেকে টেক্সট কনভার্ট (dart:io ছাড়া সর্বজনীন উপায়)
         if (file.bytes != null) {
           csvRawString = utf8.decode(file.bytes!);
         } 
-        // ২. ফাইল পাথ থেকে রিড
+        // ২. যদি কোনো কারণে বাইট নাল হয় তবে kIsWeb ট্র্যাকিং করে ফাইল পড়া
         else if (!kIsWeb && file.path != null) {
           final ioFile = io.File(file.path!);
           csvRawString = await ioFile.readAsString();
@@ -649,9 +649,6 @@ Future<void> _exportBackup() async {
       );
     }
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {

@@ -3,12 +3,6 @@
 
 
 
-
-
-
-
-
-
 // // lib/screens/create_qr_screen.dart
 // import 'package:flutter/material.dart';
 // import '../widgets/custom_drawer.dart';
@@ -23,16 +17,9 @@
 // }
 
 // class _CreateQRScreenState extends State<CreateQRScreen> {
-//   // ফাইল টু কিউআর সহ আপডেট করা কিউআর লিস্ট
+//   // নতুন ১টি অপশন (Clipboard to QR) সহ আপডেট করা কিউআর লিস্ট
 //   final List<Map<String, dynamic>> _qrOptions = [
-//     // --- নতুন সংযোজন: ফাইল টু কিউআর অপশন ---
-//     {
-//       'icon': Icons.attach_file_rounded,
-//       'title': 'File to QR',
-//       'type': 'file', 
-//       'color': Colors.deepOrangeAccent,
-//     },
-//     // --- ক্লিপবোর্ড টু কিউআর ---
+//     // --- নতুন সংযোজন: ক্লিপবোর্ড টু কিউআর ফিচার ---
 //     {
 //       'icon': Icons.assignment_returned,
 //       'title': 'Clipboard to QR',
@@ -279,19 +266,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 // lib/screens/create_qr_screen.dart
 import 'package:flutter/material.dart';
 import '../widgets/custom_drawer.dart';
@@ -306,9 +280,9 @@ class CreateQRScreen extends StatefulWidget {
 }
 
 class _CreateQRScreenState extends State<CreateQRScreen> {
-  // অনাবশ্যক সোশ্যাল ও পেমেন্ট অপশন বাদ দিয়ে পরিচ্ছন্ন কিউআর লিস্ট
+  // ফাইল টু কিউআর সহ আপডেট করা কিউআর লিস্ট
   final List<Map<String, dynamic>> _qrOptions = [
-    // --- ফাইল টু কিউআর অপশন ---
+    // --- নতুন সংযোজন: ফাইল টু কিউআর অপশন ---
     {
       'icon': Icons.attach_file_rounded,
       'title': 'File to QR',
@@ -322,12 +296,44 @@ class _CreateQRScreenState extends State<CreateQRScreen> {
       'type': 'text', 
       'color': Colors.greenAccent.shade400,
     },
-    // --- ইউআরএল / ওয়েবসাইট ---
     {
       'icon': Icons.link,
       'title': 'Website URL',
       'type': 'url',
       'color': Colors.blue,
+    },
+    // --- ১. সোশ্যাল মিডিয়া হাব ---
+    {
+      'icon': Icons.chat_rounded,
+      'title': 'WhatsApp Chat',
+      'type': 'url',
+      'color': Colors.greenAccent.shade700,
+    },
+    {
+      'icon': Icons.facebook,
+      'title': 'Facebook Page',
+      'type': 'url',
+      'color': const Color(0xFF1877F2),
+    },
+    {
+      'icon': Icons.play_circle_fill_rounded,
+      'title': 'YouTube Link',
+      'type': 'url',
+      'color': Colors.red,
+    },
+    // --- ২. পেমেন্ট ও বিজনেস কিউআর ---
+    {
+      'icon': Icons.payments_rounded,
+      'title': 'PayPal / Payment',
+      'type': 'url',
+      'color': Colors.amber.shade700,
+    },
+    // --- ৩. ফাইল ও ক্লাউড শেয়ারিং ---
+    {
+      'icon': Icons.cloud_circle_rounded,
+      'title': 'Google Drive / PDF',
+      'type': 'url',
+      'color': Colors.blue.shade700,
     },
     // --- স্ট্যান্ডার্ড ক্যাটাগরিগুলো ---
     {
