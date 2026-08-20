@@ -43,7 +43,7 @@ jobs:
       - name: Build AAB
         env:
           GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --android-skip-build-dependency-validation
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4.6.1
