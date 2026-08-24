@@ -837,8 +837,11 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
 
     if (widget.initialData != null && widget.initialData!.isNotEmpty) {
       _populateInitialData(widget.initialData!);
+    } else if (widget.formType == 'text') {
+      // 💡 শুধুমাত্র 'text' (Clipboard to QR) এর জন্য Auto Paste চালু রাখা হলো
+      _autoPasteFromClipboard();
     }
-    // 🛑 অটো পেস্ট বন্ধ করা হয়েছে যাতে অটোমেটিক কপি করা ডাটা বক্সে না বসে।
+    // 'url' (Website URL) এর জন্য Auto Paste পুরোপুরি বন্ধ
   }
 
   void _populateInitialData(String rawData) {
@@ -950,14 +953,13 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     super.dispose();
   }
 
-  Future<void> _autoPasteFromClipboard() async {
+ Future<void> _autoPasteFromClipboard() async {
     ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
     if (data != null && data.text != null && data.text!.isNotEmpty) {
       String copiedText = data.text!.trim();
       setState(() {
-        if (widget.formType == 'url') {
-          controllers['url']!.text = copiedText;
-        } else if (widget.formType == 'text') {
+        // 💡 কেবল Plain Text / Clipboard to QR অপশনেই অটো পেস্ট হবে
+        if (widget.formType == 'text') {
           controllers['text']!.text = copiedText;
         }
       });
