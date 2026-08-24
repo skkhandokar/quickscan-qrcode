@@ -2,46 +2,67 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 // // lib/screens/form_screens/generic_form_screen.dart
 // import 'package:flutter/material.dart';
 // import 'package:flutter/services.dart';
 // import 'package:http/http.dart' as http;
-// import 'package:image_picker/image_picker.dart'; // গ্যালারি থেকে ছবি সিলেক্টের জন্য
+// import 'package:image_picker/image_picker.dart'; 
+// import 'package:file_picker/file_picker.dart'; 
 // import 'dart:io';
 // import 'dart:convert';
 // import './scan_result_screen.dart';
 // import '../../services/history_service.dart'; 
 
+// bool _isWifiPassVisible = false;
+
 // class GenericFormScreen extends StatefulWidget {
 //   final String formType;
 //   final String title;
 //   final bool isBarcode;
-//   final String? initialData; // <-- এখানে ফিল্ডটি যোগ করতে হবে
+//   final String? initialData;
 
 //   const GenericFormScreen({
 //     super.key, 
 //     required this.formType, 
 //     required this.title, 
 //     this.isBarcode = false,
-//     this.initialData, // <-- এখানে কনস্ট্রাক্টরে পারামিটারটি ডিফাইন করা হলো
+//     this.initialData,
 //   });
 
 //   @override
 //   State<GenericFormScreen> createState() => _GenericFormScreenState();
 // }
-// bool _isWifiPassVisible = false;
+
 // class _GenericFormScreenState extends State<GenericFormScreen> {
 //   final Map<String, TextEditingController> controllers = {};
 //   bool _isAllDay = false;
 //   bool _isHidden = false;
+//   bool _isUploadingFile = false; 
 //   String _wifiSecurity = 'WPA/WPA2';
 
 //   Color selectedQrColor = Colors.black;
 //   Color selectedBgColor = Colors.white;
 
-//   // --- নতুন যুক্ত করা কাস্টম লোগো ভেরিয়েবলসমূহ ---
+//   // --- কাস্টম লোগো ভেরিয়েবলসমূহ ---
 //   File? _customLogoFile;
 //   final ImagePicker _picker = ImagePicker();
+
+//   // --- ফাইল সিলেক্ট সংক্রান্ত ভেরিয়েবল ---
+//   File? _selectedFile;
+//   String? _selectedFileName;
 
 //   final List<Color> qrColors = [
 //     Colors.black, Colors.blue.shade900, Colors.red.shade900, Colors.green.shade900, Colors.purple.shade900, Colors.teal.shade900
@@ -50,12 +71,11 @@
 //     Colors.white, Colors.amber.shade50, Colors.blue.shade50, Colors.grey.shade200
 //   ];
 
-// @override
+//   @override
 //   void initState() {
 //     super.initState();
 //     _initControllers();
 
-//     // এডিট মোড হলে আগের তথ্য দিয়ে ঘরগুলো পূরণ হবে
 //     if (widget.initialData != null && widget.initialData!.isNotEmpty) {
 //       _populateInitialData(widget.initialData!);
 //     } else if (widget.formType == 'text' || widget.formType == 'url') {
@@ -83,7 +103,6 @@
 //         break;
 
 //       case 'wifi':
-//         // WIFI:S:MyWifi;T:WPA;P:123456;H:false;; পার্সিং
 //         String cleanData = rawData.replaceFirst('WIFI:', '');
 //         List<String> parts = cleanData.split(';');
 //         for (var part in parts) {
@@ -104,7 +123,8 @@
 //             _isHidden = part.substring(2).toLowerCase() == 'true';
 //           }
 //         }
-//         break; // <-- অবশ্যই এখানে break হবে
+//         break;
+
 //       case 'email':
 //         if (rawData.startsWith('MATMSG:')) {
 //           RegExp toExp = RegExp(r'TO:(.*?);');
@@ -126,14 +146,13 @@
 //         if (smsParts.length > 1) controllers['sms_msg']!.text = smsParts[1];
 //         break;
 
-        
 //       case 'contact':
 //         RegExp nameExp = RegExp(r'N:(.*?);');
 //         RegExp orgExp = RegExp(r'ORG:(.*?);');
 //         RegExp adrExp = RegExp(r'ADR:(.*?);');
 //         RegExp telExp = RegExp(r'TEL:(.*?);');
 //         RegExp mailExp = RegExp(r'EMAIL:(.*?);');
-//         RegExp noteExp = RegExp(r'NOTE:(.*?);;'); // <-- এখানে ভুল স্পেলিং ফিক্স করা হয়েছে
+//         RegExp noteExp = RegExp(r'NOTE:(.*?);;');
 
 //         if (nameExp.hasMatch(rawData)) controllers['name']!.text = nameExp.firstMatch(rawData)!.group(1) ?? '';
 //         if (orgExp.hasMatch(rawData)) controllers['org']!.text = orgExp.firstMatch(rawData)!.group(1) ?? '';
@@ -208,14 +227,70 @@
 //     }
 //   }
 
-//   // সিলেক্ট করা কাস্টম লোগো রিমুভ করার মেথড
 //   void _removeCustomLogo() {
 //     setState(() {
 //       _customLogoFile = null;
 //     });
 //   }
 
-//   // --- ফিচার ৩: এপিআই দিয়ে লিংক শর্ট (Dynamic QR) করার লজিক ---
+//   // 📂 ফাইল সিলেক্ট করার সঠিক মেথড (Mobile Only)
+//  // 📂 ফাইল সিলেক্ট করার মেথড (Old/Legacy FilePicker Package Support)
+//   Future<void> _pickFile() async {
+//     try {
+//       FilePickerResult? result = await FilePicker.pickFiles(
+//         type: FileType.any,
+//       );
+      
+//       if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+//         setState(() {
+//           _selectedFile = File(result.files.single.path!);
+//           _selectedFileName = result.files.single.name;
+//         });
+//       }
+//     } catch (e) {
+//       debugPrint("File picker error: $e");
+//     }
+//   }
+
+
+//   // 📤 Cloudinary-তে ফাইল আপলোড মেথড (৫টি অ্যাকাউন্ট ব্যাকআপ সহ)
+//   Future<String?> _uploadSelectedFile() async {
+//     if (_selectedFile == null) return null;
+
+//     final List<Map<String, String>> cloudinaryAccounts = [
+//       {'cloudName': 'e9rcvrwi', 'preset': 'quickscan_preset1'},
+//       {'cloudName': 'lqm3fzki', 'preset': 'quickscan_preset2'},
+//       {'cloudName': 'xxshdsfp', 'preset': 'quickscan_preset3'},
+//       {'cloudName': 'f5vsfkzv', 'preset': 'quickscan_preset4'},
+//       {'cloudName': 'xtjos6jz', 'preset': 'quickscan_preset5'},
+//     ];
+
+//     for (var acc in cloudinaryAccounts) {
+//       try {
+//         var request = http.MultipartRequest(
+//           'POST',
+//           Uri.parse('https://api.cloudinary.com/v1_1/${acc['cloudName']}/auto/upload'),
+//         )
+//           ..fields['upload_preset'] = acc['preset']!
+//           ..files.add(await http.MultipartFile.fromPath('file', _selectedFile!.path));
+
+//         var response = await request.send();
+//         if (response.statusCode == 200) {
+//           var responseData = await response.stream.bytesToString();
+//           var jsonMap = jsonDecode(responseData);
+//           return jsonMap['secure_url']; 
+//         } else {
+//           debugPrint("Failed on ${acc['cloudName']}. Status: ${response.statusCode}");
+//         }
+//       } catch (e) {
+//         debugPrint("Error on ${acc['cloudName']}: $e");
+//       }
+//     }
+
+//     return null; 
+//   }
+
+//   // 🔗 URL Shortener মেথড
 //   Future<String> _shortenUrl(String longUrl) async {
 //     try {
 //       final response = await http.post(
@@ -227,7 +302,7 @@
 //         return data['result_url'] ?? longUrl;
 //       }
 //     } catch (e) {
-//       print("Shortening error: $e");
+//       debugPrint("Shortening error: $e");
 //     }
 //     return longUrl; 
 //   }
@@ -240,7 +315,28 @@
 //   void _submitForm() async {
 //     String finalData = "";
     
-//     if (widget.isBarcode) {
+//     if (widget.formType == 'file') {
+//       if (_selectedFile == null) {
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(backgroundColor: Colors.redAccent, content: Text('Please select a file first!')),
+//         );
+//         return;
+//       }
+
+//       setState(() => _isUploadingFile = true);
+//       String? uploadedUrl = await _uploadSelectedFile();
+//       setState(() => _isUploadingFile = false);
+
+//       if (uploadedUrl != null) {
+//         finalData = uploadedUrl;
+//       } else {
+//         if (!mounted) return;
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           const SnackBar(backgroundColor: Colors.redAccent, content: Text('File upload failed! Please try again.')),
+//         );
+//         return;
+//       }
+//     } else if (widget.isBarcode) {
 //       finalData = controllers['barcode_input']!.text.trim();
 //     } else {
 //       switch (widget.formType) {
@@ -251,7 +347,6 @@
 //             return;
 //           }
 
-//           // ফিচার ৩ প্রম্পট ডায়ালগ
 //           bool? makeDynamic = await showDialog<bool>(
 //             context: context,
 //             builder: (context) => AlertDialog(
@@ -271,7 +366,7 @@
 //             showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
 //             processedUrl = await _shortenUrl(urlInput);
 //             if (!mounted) return;
-//             Navigator.pop(context); // লোডিং রিমুভ
+//             Navigator.pop(context);
 //           }
 //           finalData = processedUrl;
 //           break;
@@ -289,10 +384,15 @@
 
 //     if (finalData.isNotEmpty) {
 //       final String commonId = DateTime.now().millisecondsSinceEpoch.toString();
+      
+//       String displayTitle = widget.formType == 'file' 
+//           ? "File: ${_selectedFileName ?? finalData}" 
+//           : (widget.isBarcode ? "Barcode: $finalData" : finalData);
+
 //       await HistoryService.addToStorage(
-//         isMyQR: true, // ইউজারের নিজের তৈরি তাই true সেট করা হলো
+//         isMyQR: true,
 //         type: widget.isBarcode ? 'barcode' : widget.formType,
-//         title: widget.isBarcode ? "Barcode: $finalData" : finalData,
+//         title: displayTitle,
 //         isBarcode: widget.isBarcode,
 //         barcodeTypeTag: widget.formType,
 //         customId: commonId,
@@ -307,7 +407,7 @@
 //           itemId: commonId,
 //           qrColor: selectedQrColor, 
 //           qrBgColor: selectedBgColor, 
-//           customLogoPath: _customLogoFile?.path, // কাস্টম লোগো ফাইলটির লোকাল পাথ পাঠানো হলো
+//           customLogoPath: _customLogoFile?.path,
 //         ),
 //       ));
 //     }
@@ -324,7 +424,17 @@
 //         backgroundColor: Colors.transparent,
 //         elevation: 0,
 //         iconTheme: const IconThemeData(color: Colors.white),
-//         actions: [IconButton(icon: const Icon(Icons.check, color: Colors.blueAccent, size: 28), onPressed: _submitForm)],
+//         actions: [
+//           _isUploadingFile
+//               ? const Padding(
+//                   padding: EdgeInsets.all(12.0),
+//                   child: CircularProgressIndicator(color: Colors.blueAccent),
+//                 )
+//               : IconButton(
+//                   icon: const Icon(Icons.check, color: Colors.blueAccent, size: 28), 
+//                   onPressed: _submitForm,
+//                 )
+//         ],
 //       ),
 //       body: SingleChildScrollView(
 //         padding: const EdgeInsets.all(20.0),
@@ -336,7 +446,13 @@
 //               children: [
 //                 Row(
 //                   children: [
-//                     Icon(widget.formType == 'wifi' ? Icons.wifi : widget.isBarcode ? Icons.reorder : Icons.edit, color: primaryColor, size: 28),
+//                     Icon(
+//                       widget.formType == 'file' 
+//                           ? Icons.attach_file 
+//                           : (widget.formType == 'wifi' ? Icons.wifi : widget.isBarcode ? Icons.reorder : Icons.edit), 
+//                       color: primaryColor, 
+//                       size: 28,
+//                     ),
 //                     const SizedBox(width: 12),
 //                     Text(widget.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
 //                   ],
@@ -354,7 +470,6 @@
 //             const SizedBox(height: 25),
 //             ..._buildFormFields(),
 
-//             // --- নতুন ফিচার: "Choose Logo" কাস্টম ডিজাইন উইজেট (শুধুমাত্র QR কোডের জন্য) ---
 //             if (!widget.isBarcode) ...[
 //               const Divider(color: Colors.white24, height: 40),
 //               const Text(
@@ -365,13 +480,12 @@
 //               Container(
 //                 padding: const EdgeInsets.all(16),
 //                 decoration: BoxDecoration(
-//                   color: const Color(0xFF1C1C1E), // ডার্ক থিমের সাথে ম্যাচিং কার্ড ডিজাইন
+//                   color: const Color(0xFF1C1C1E),
 //                   borderRadius: BorderRadius.circular(12),
 //                   border: Border.all(color: Colors.white.withOpacity(0.05)),
 //                 ),
 //                 child: Row(
 //                   children: [
-//                     // লোগো সিলেকশনের লাইভ প্রিভিউ বক্স
 //                     Container(
 //                       width: 60,
 //                       height: 60,
@@ -388,8 +502,6 @@
 //                           : const Icon(Icons.add_photo_alternate_outlined, color: Colors.white30, size: 28),
 //                     ),
 //                     const SizedBox(width: 16),
-                    
-//                     // ডাইনামিক বাটন লজিক
 //                     Expanded(
 //                       child: Column(
 //                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -474,6 +586,43 @@
 //   }
 
 //   List<Widget> _buildFormFields() {
+//     if (widget.formType == 'file') {
+//       return [
+//         Container(
+//           padding: const EdgeInsets.all(16),
+//           decoration: BoxDecoration(
+//             border: Border.all(color: Colors.white24),
+//             borderRadius: BorderRadius.circular(12),
+//             color: const Color(0xFF1C1C1E),
+//           ),
+//           child: Column(
+//             children: [
+//               ListTile(
+//                 contentPadding: EdgeInsets.zero,
+//                 leading: const Icon(Icons.insert_drive_file, color: Colors.blueAccent, size: 36),
+//                 title: Text(
+//                   _selectedFileName ?? "No file selected",
+//                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+//                 ),
+//                 subtitle: const Text("Select PDF, Image, or Document to generate QR Code", style: TextStyle(color: Colors.white54, fontSize: 12)),
+//               ),
+//               const SizedBox(height: 12),
+//               ElevatedButton.icon(
+//                 onPressed: _isUploadingFile ? null : _pickFile,
+//                 icon: const Icon(Icons.upload_file, color: Colors.white),
+//                 label: Text(_selectedFile == null ? "Choose File" : "Change File", style: const TextStyle(color: Colors.white)),
+//                 style: ElevatedButton.styleFrom(
+//                   backgroundColor: Theme.of(context).primaryColor,
+//                   minimumSize: const Size(double.infinity, 45),
+//                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         )
+//       ];
+//     }
+
 //     if (widget.isBarcode) return [_customTextField(controllers['barcode_input']!, 'Enter Barcode Data')];
 //     switch (widget.formType) {
 //       case 'url': return [_customTextField(controllers['url']!, 'Enter Website URL', keyboardType: TextInputType.url)];
@@ -482,16 +631,38 @@
 //       case 'wifi':
 //         return [
 //           _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
-//           _customTextField(controllers['wifi_pass']!, 'Password', obscureText: true),
+//           _customTextField(
+//             controllers['wifi_pass']!, 
+//             'Password', 
+//             isPassword: true,
+//             obscureText: !_isWifiPassVisible,
+//             onToggleVisibility: () {
+//               setState(() {
+//                 _isWifiPassVisible = !_isWifiPassVisible;
+//               });
+//             },
+//           ),
 //           DropdownButtonFormField<String>(
 //             initialValue: _wifiSecurity,
 //             dropdownColor: const Color(0xFF1E1E1E),
 //             style: const TextStyle(color: Colors.white),
-//             decoration: const InputDecoration(labelText: 'Security Type', labelStyle: TextStyle(color: Colors.white54), border: OutlineInputBorder()),
+//             decoration: const InputDecoration(
+//               labelText: 'Security Type', 
+//               labelStyle: TextStyle(color: Colors.white54), 
+//               border: OutlineInputBorder()
+//             ),
 //             items: ['WPA/WPA2', 'WEP', 'no pass'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
 //             onChanged: (v) => setState(() => _wifiSecurity = v!),
 //           ),
-//           Row(children: [Checkbox(value: _isHidden, onChanged: (v) => setState(() => _isHidden = v!)), const Text('Hidden Network', style: TextStyle(color: Colors.white70))]),
+//           Row(
+//             children: [
+//               Checkbox(
+//                 value: _isHidden, 
+//                 onChanged: (v) => setState(() => _isHidden = v!)
+//               ), 
+//               const Text('Hidden Network', style: TextStyle(color: Colors.white70))
+//             ]
+//           ),
 //         ];
 //       case 'email':
 //         return [
@@ -508,7 +679,13 @@
 //       case 'calendar':
 //         return [
 //           _customTextField(controllers['event']!, 'Event name'),
-//           CheckboxListTile(title: const Text("All day event", style: TextStyle(color: Colors.white70)), value: _isAllDay, controlAffinity: ListTileControlAffinity.leading, contentPadding: EdgeInsets.zero, onChanged: (v) => setState(() => _isAllDay = v!)),
+//           CheckboxListTile(
+//             title: const Text("All day event", style: TextStyle(color: Colors.white70)), 
+//             value: _isAllDay, 
+//             controlAffinity: ListTileControlAffinity.leading, 
+//             contentPadding: EdgeInsets.zero, 
+//             onChanged: (v) => setState(() => _isAllDay = v!)
+//           ),
 //           _customTextField(controllers['location']!, 'Location'),
 //           _customTextField(controllers['desc']!, 'Description', maxLines: 3),
 //         ];
@@ -530,20 +707,45 @@
 //     }
 //   }
 
-//   Widget _customTextField(TextEditingController controller, String label, {int maxLines = 1, bool obscureText = false, TextInputType keyboardType = TextInputType.text}) {
+//   Widget _customTextField(
+//     TextEditingController controller, 
+//     String label, {
+//     int maxLines = 1, 
+//     bool obscureText = false, 
+//     bool isPassword = false, 
+//     VoidCallback? onToggleVisibility,
+//     TextInputType keyboardType = TextInputType.text,
+//   }) {
 //     return Padding(
 //       padding: const EdgeInsets.only(bottom: 15.0),
-//       child: TextField(
-//         controller: controller,
-//         maxLines: maxLines,
-//         obscureText: obscureText,
-//         keyboardType: keyboardType,
-//         style: const TextStyle(color: Colors.white),
-//         decoration: InputDecoration(
-//           labelText: label, labelStyle: const TextStyle(color: Colors.white54),
-//           border: const OutlineInputBorder(),
-//           enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-//           focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: Theme.of(context).primaryColor)),
+//       child: Material(
+//         color: Colors.transparent,
+//         child: TextField(
+//           controller: controller,
+//           maxLines: maxLines,
+//           obscureText: obscureText,
+//           keyboardType: keyboardType,
+//           style: const TextStyle(color: Colors.white),
+//           decoration: InputDecoration(
+//             labelText: label,
+//             labelStyle: const TextStyle(color: Colors.white54),
+//             border: const OutlineInputBorder(),
+//             enabledBorder: const OutlineInputBorder(
+//               borderSide: BorderSide(color: Colors.white24),
+//             ),
+//             focusedBorder: OutlineInputBorder(
+//               borderSide: BorderSide(color: Theme.of(context).primaryColor),
+//             ),
+//             suffixIcon: isPassword
+//                 ? IconButton(
+//                     icon: Icon(
+//                       obscureText ? Icons.visibility_off : Icons.visibility,
+//                       color: Colors.white54,
+//                     ),
+//                     onPressed: onToggleVisibility,
+//                   )
+//                 : null,
+//           ),
 //         ),
 //       ),
 //     );
@@ -577,14 +779,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart'; 
+import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart'; 
 import 'dart:io';
 import 'dart:convert';
-import './scan_result_screen.dart';
-import '../../services/history_service.dart'; 
 
-bool _isWifiPassVisible = false;
+import '../../services/history_service.dart';
+import './scan_result_screen.dart'; 
+
 
 class GenericFormScreen extends StatefulWidget {
   final String formType;
@@ -609,16 +811,15 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
   bool _isAllDay = false;
   bool _isHidden = false;
   bool _isUploadingFile = false; 
+  bool _isWifiPassVisible = false;
   String _wifiSecurity = 'WPA/WPA2';
 
   Color selectedQrColor = Colors.black;
   Color selectedBgColor = Colors.white;
 
-  // --- কাস্টম লোগো ভেরিয়েবলসমূহ ---
   File? _customLogoFile;
   final ImagePicker _picker = ImagePicker();
 
-  // --- ফাইল সিলেক্ট সংক্রান্ত ভেরিয়েবল ---
   File? _selectedFile;
   String? _selectedFileName;
 
@@ -636,9 +837,8 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
 
     if (widget.initialData != null && widget.initialData!.isNotEmpty) {
       _populateInitialData(widget.initialData!);
-    } else if (widget.formType == 'text' || widget.formType == 'url') {
-      _autoPasteFromClipboard();
     }
+    // 🛑 অটো পেস্ট বন্ধ করা হয়েছে যাতে অটোমেটিক কপি করা ডাটা বক্সে না বসে।
   }
 
   void _populateInitialData(String rawData) {
@@ -651,15 +851,12 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       case 'url':
         controllers['url']!.text = rawData;
         break;
-
       case 'text':
         controllers['text']!.text = rawData;
         break;
-
       case 'phone':
         controllers['phone_single']!.text = rawData.replaceAll('tel:', '');
         break;
-
       case 'wifi':
         String cleanData = rawData.replaceFirst('WIFI:', '');
         List<String> parts = cleanData.split(';');
@@ -682,7 +879,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
           }
         }
         break;
-
       case 'email':
         if (rawData.startsWith('MATMSG:')) {
           RegExp toExp = RegExp(r'TO:(.*?);');
@@ -696,14 +892,12 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
           controllers['email']!.text = rawData.replaceAll('mailto:', '');
         }
         break;
-
       case 'sms':
         String cleanSms = rawData.replaceAll('smsto:', '');
         List<String> smsParts = cleanSms.split(':');
         if (smsParts.isNotEmpty) controllers['sms_phone']!.text = smsParts[0];
         if (smsParts.length > 1) controllers['sms_msg']!.text = smsParts[1];
         break;
-
       case 'contact':
         RegExp nameExp = RegExp(r'N:(.*?);');
         RegExp orgExp = RegExp(r'ORG:(.*?);');
@@ -762,9 +956,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       String copiedText = data.text!.trim();
       setState(() {
         if (widget.formType == 'url') {
-          if (copiedText.startsWith('http://') || copiedText.startsWith('https://')) {
-            controllers['url']!.text = copiedText;
-          }
+          controllers['url']!.text = copiedText;
         } else if (widget.formType == 'text') {
           controllers['text']!.text = copiedText;
         }
@@ -772,7 +964,6 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     }
   }
 
-  // গ্যালারি থেকে কাস্টম লোগো সিলেক্ট করার মেথড
   Future<void> _pickCustomLogo() async {
     final XFile? pickedFile = await _picker.pickImage(
       source: ImageSource.gallery,
@@ -791,9 +982,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     });
   }
 
-  // 📂 ফাইল সিলেক্ট করার সঠিক মেথড (Mobile Only)
- // 📂 ফাইল সিলেক্ট করার মেথড (Old/Legacy FilePicker Package Support)
-  Future<void> _pickFile() async {
+Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.pickFiles(
         type: FileType.any,
@@ -809,9 +998,11 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       debugPrint("File picker error: $e");
     }
   }
+    
 
 
-  // 📤 Cloudinary-তে ফাইল আপলোড মেথড (৫টি অ্যাকাউন্ট ব্যাকআপ সহ)
+
+
   Future<String?> _uploadSelectedFile() async {
     if (_selectedFile == null) return null;
 
@@ -837,18 +1028,14 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
           var responseData = await response.stream.bytesToString();
           var jsonMap = jsonDecode(responseData);
           return jsonMap['secure_url']; 
-        } else {
-          debugPrint("Failed on ${acc['cloudName']}. Status: ${response.statusCode}");
         }
       } catch (e) {
-        debugPrint("Error on ${acc['cloudName']}: $e");
+        debugPrint("Error uploading file: $e");
       }
     }
-
-    return null; 
+    return null;
   }
 
-  // 🔗 URL Shortener মেথড
   Future<String> _shortenUrl(String longUrl) async {
     try {
       final response = await http.post(
@@ -865,9 +1052,17 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     return longUrl; 
   }
 
+  // 🌐 [সংশোধিত] যেকোনো জটিল URL (youtu.be, gemini, shorts ইত্যাদি) সঠিকভাবে ভ্যালিডেট করবে
   bool _isValidUrl(String url) {
-    final pattern = r'^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$';
-    return RegExp(pattern, caseSensitive: false).hasMatch(url) && url != 'https://' && url != 'http://';
+    if (url.trim().isEmpty || url == 'https://' || url == 'http://') return false;
+    
+    String formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://$formattedUrl';
+    }
+
+    final Uri? parsedUri = Uri.tryParse(formattedUrl);
+    return parsedUri != null && parsedUri.hasAuthority && parsedUri.host.contains('.');
   }
 
   void _submitForm() async {
@@ -901,7 +1096,9 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
         case 'url':
           final String urlInput = controllers['url']!.text.trim();
           if (!_isValidUrl(urlInput)) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.redAccent, content: Text('Please enter a valid website URL!')));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(backgroundColor: Colors.redAccent, content: Text('Please enter a valid website URL!')),
+            );
             return;
           }
 
@@ -968,6 +1165,10 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
           customLogoPath: _customLogoFile?.path,
         ),
       ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter some details first!')),
+      );
     }
   }
 
@@ -1181,88 +1382,112 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
       ];
     }
 
-    if (widget.isBarcode) return [_customTextField(controllers['barcode_input']!, 'Enter Barcode Data')];
-    switch (widget.formType) {
-      case 'url': return [_customTextField(controllers['url']!, 'Enter Website URL', keyboardType: TextInputType.url)];
-      case 'text': return [_customTextField(controllers['text']!, 'Enter Text Content', maxLines: 5)];
-      case 'phone': return [_customTextField(controllers['phone_single']!, 'Phone', keyboardType: TextInputType.phone)];
-      case 'wifi':
-        return [
-          _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
-          _customTextField(
-            controllers['wifi_pass']!, 
-            'Password', 
-            isPassword: true,
-            obscureText: !_isWifiPassVisible,
-            onToggleVisibility: () {
-              setState(() {
-                _isWifiPassVisible = !_isWifiPassVisible;
-              });
-            },
+    if (widget.isBarcode) return [_customTextField(controllers['barcode_input']!, 'Enter Barcode Data/Number')];
+    if (widget.formType == 'wifi') { 
+      return [
+        _customTextField(controllers['wifi_ssid']!, 'SSID/Network name'),
+        _customTextField(
+          controllers['wifi_pass']!, 
+          'Password', 
+          isPassword: true,
+          obscureText: !_isWifiPassVisible,
+          onToggleVisibility: () {
+            setState(() {
+              _isWifiPassVisible = !_isWifiPassVisible;
+            });
+          },
+        ),
+        const SizedBox(height: 5),
+        DropdownButtonFormField<String>(
+          initialValue: _wifiSecurity,
+          dropdownColor: const Color(0xFF1E1E1E),
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: 'Security Type',
+            labelStyle: TextStyle(color: Colors.white54),
+            border: OutlineInputBorder(),
           ),
-          DropdownButtonFormField<String>(
-            initialValue: _wifiSecurity,
-            dropdownColor: const Color(0xFF1E1E1E),
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              labelText: 'Security Type', 
-              labelStyle: TextStyle(color: Colors.white54), 
-              border: OutlineInputBorder()
+          items: ['WPA/WPA2', 'WEP', 'no pass'].map((String value) {
+            return DropdownMenuItem<String>(
+              value: value, 
+              child: Text(value, style: const TextStyle(color: Colors.white)),
+            );
+          }).toList(),
+          onChanged: (newValue) {
+            setState(() { _wifiSecurity = newValue!; });
+          },
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Checkbox(
+              value: _isHidden,
+              activeColor: Theme.of(context).primaryColor,
+              onChanged: (bool? value) {
+                setState(() { _isHidden = value!; });
+              },
             ),
-            items: ['WPA/WPA2', 'WEP', 'no pass'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-            onChanged: (v) => setState(() => _wifiSecurity = v!),
-          ),
-          Row(
-            children: [
-              Checkbox(
-                value: _isHidden, 
-                onChanged: (v) => setState(() => _isHidden = v!)
-              ), 
-              const Text('Hidden Network', style: TextStyle(color: Colors.white70))
-            ]
-          ),
-        ];
-      case 'email':
-        return [
-          _customTextField(controllers['email']!, 'Email Address', keyboardType: TextInputType.emailAddress),
-          _customTextField(controllers['subject']!, 'Subject'),
-          _customTextField(controllers['body']!, 'Body message', maxLines: 5),
-        ];
-      case 'geo':
-        return [
-          _customTextField(controllers['lat']!, 'Latitude', keyboardType: TextInputType.number),
-          _customTextField(controllers['lon']!, 'Longitude', keyboardType: TextInputType.number),
-          _customTextField(controllers['query']!, 'Query (Optional)'),
-        ];
-      case 'calendar':
-        return [
-          _customTextField(controllers['event']!, 'Event name'),
-          CheckboxListTile(
-            title: const Text("All day event", style: TextStyle(color: Colors.white70)), 
-            value: _isAllDay, 
-            controlAffinity: ListTileControlAffinity.leading, 
-            contentPadding: EdgeInsets.zero, 
-            onChanged: (v) => setState(() => _isAllDay = v!)
-          ),
-          _customTextField(controllers['location']!, 'Location'),
-          _customTextField(controllers['desc']!, 'Description', maxLines: 3),
-        ];
-      case 'contact':
-        return [
-          _customTextField(controllers['name']!, 'Full name'),
-          _customTextField(controllers['org']!, 'Organization'),
-          _customTextField(controllers['address']!, 'Address'),
-          _customTextField(controllers['phone']!, 'Phone Number', keyboardType: TextInputType.phone),
-          _customTextField(controllers['mail']!, 'Email Address', keyboardType: TextInputType.emailAddress),
-          _customTextField(controllers['notes']!, 'Notes/Remarks', maxLines: 4),
-        ];
-      case 'sms':
-        return [
-          _customTextField(controllers['sms_phone']!, 'Recipient Phone', keyboardType: TextInputType.phone),
-          _customTextField(controllers['sms_msg']!, 'SMS Message Body', maxLines: 5),
-        ];
-      default: return [];
+            const Text('Hidden Network', style: TextStyle(color: Colors.white70)),
+          ],
+        ),
+      ];
     }
+    if (widget.formType == 'phone') {
+      return [_customTextField(controllers['phone_single']!, 'Phone', keyboardType: TextInputType.phone)];
+    }
+    if (widget.formType == 'url' || widget.formType == 'text') {
+      return [_customTextField(controllers[widget.formType]!, widget.formType == 'url' ? 'Enter Website URL' : 'Enter Text Content')];
+    }
+    if (widget.formType == 'geo') {
+      return [
+        _customTextField(controllers['lat']!, 'Latitude', keyboardType: TextInputType.number),
+        _customTextField(controllers['lon']!, 'Longitude', keyboardType: TextInputType.number),
+        _customTextField(controllers['query']!, 'Query (Optional)'),
+      ];
+    }
+    if (widget.formType == 'email') {
+      return [
+        _customTextField(controllers['email']!, 'Email Address', keyboardType: TextInputType.emailAddress),
+        _customTextField(controllers['subject']!, 'Subject'),
+        _customTextField(controllers['body']!, 'Body message', maxLines: 5),
+      ];
+    }
+    if (widget.formType == 'calendar') {
+      return [
+        _customTextField(controllers['event']!, 'Event name'),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8.0),
+          child: Text("Start:\n2026-07-13   20:50\nEnd:\n2026-07-13   20:50", style: TextStyle(color: Colors.white70)),
+        ),
+        CheckboxListTile(
+          title: const Text("All day event", style: TextStyle(color: Colors.white70)),
+          value: _isAllDay,
+          activeColor: Theme.of(context).primaryColor,
+          controlAffinity: ListTileControlAffinity.leading,
+          contentPadding: EdgeInsets.zero,
+          onChanged: (v) => setState(() => _isAllDay = v!),
+        ),
+        _customTextField(controllers['location']!, 'Location'),
+        _customTextField(controllers['desc']!, 'Description', maxLines: 3),
+      ];
+    }
+    if (widget.formType == 'contact') {
+      return [
+        _customTextField(controllers['name']!, 'Full name'),
+        _customTextField(controllers['org']!, 'Organization'),
+        _customTextField(controllers['address']!, 'Address'),
+        _customTextField(controllers['phone']!, 'Phone Number', keyboardType: TextInputType.phone),
+        _customTextField(controllers['mail']!, 'Email Address', keyboardType: TextInputType.emailAddress),
+        _customTextField(controllers['notes']!, 'Notes/Remarks', maxLines: 4),
+      ];
+    }
+    if (widget.formType == 'sms') {
+      return [
+        _customTextField(controllers['sms_phone']!, 'Recipient Phone', keyboardType: TextInputType.phone),
+        _customTextField(controllers['sms_msg']!, 'SMS Message Body', maxLines: 5),
+      ];
+    }
+    return [];
   }
 
   Widget _customTextField(
@@ -1270,7 +1495,7 @@ class _GenericFormScreenState extends State<GenericFormScreen> {
     String label, {
     int maxLines = 1, 
     bool obscureText = false, 
-    bool isPassword = false, 
+    bool isPassword = false,
     VoidCallback? onToggleVisibility,
     TextInputType keyboardType = TextInputType.text,
   }) {
