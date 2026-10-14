@@ -22,7 +22,7 @@ class CustomDrawer extends StatelessWidget {
     Navigator.pop(context); // প্রথমে ড্রয়ারটি স্ক্রিন থেকে সরিয়ে দেওয়া হলো
     
     // আপনার অ্যাপের ইউনিক প্যাকেজ আইডি (যা প্লে-স্টোরে আপলোড করার সময় ব্যবহার করবেন)
-    const String packageName = 'com.yourcompany.quickscanqr'; 
+    const String packageName = 'https://play.google.com/store/apps/details?id=com.skkhandokar.quickscan'; 
     const String playStoreLink = 'https://play.google.com/store/apps/details?id=$packageName';
     
     // যে মেসেজটি হোয়াটসঅ্যাপ বা মেসেঞ্জারে বন্ধুদের কাছে যাবে
