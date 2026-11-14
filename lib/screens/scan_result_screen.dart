@@ -1,814 +1,7 @@
-
-
-// // lib/screens/scan_result_screen.dart
-// import 'dart:convert';
-// import 'dart:ui' as ui;
-// import 'package:flutter/foundation.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter/rendering.dart';
-// import 'package:flutter/services.dart';
-// import 'package:qr_flutter/qr_flutter.dart';
-// import 'package:barcode_widget/barcode_widget.dart' as b_widget;
-// import 'package:url_launcher/url_launcher.dart';
-// import 'package:share_plus/share_plus.dart';
-// import 'package:wifi_iot/wifi_iot.dart'; 
-// import 'package:flutter_contacts/flutter_contacts.dart' as fc; 
-// import 'package:permission_handler/permission_handler.dart';
-// import 'package:universal_html/html.dart' as html; 
-// import 'package:path_provider/path_provider.dart'; 
-// import 'package:gal/gal.dart'; 
-// import 'package:pasteboard/pasteboard.dart'; 
-// import 'dart:io';
-// import '../services/history_service.dart';
-// import './generic_form_screen.dart'; 
-
-// class ScanResultScreen extends StatefulWidget {
-//   final String rawValue;
-//   final bool isBarcodeResult;
-//   final String barcodeTypeTag;
-//   final String? itemId;
-//   final Color qrColor; 
-//   final Color qrBgColor; 
-//   final String? customLogoPath; 
-
-//   const ScanResultScreen({
-//     super.key,
-//     required this.rawValue,
-//     this.isBarcodeResult = false,
-//     this.barcodeTypeTag = "",
-//     this.itemId,
-//     this.qrColor = Colors.black, 
-//     this.qrBgColor = Colors.white, 
-//     this.customLogoPath, 
-//   });
-
-//   @override
-//   State<ScanResultScreen> createState() => _ScanResultScreenState();
-// }
-
-// class _ScanResultScreenState extends State<ScanResultScreen> {
-//   bool _isFav = false;
-//   bool _isSaving = false; 
-  
-//   final GlobalKey _qrBoundaryKey = GlobalKey(); 
-
-//   String? _selectedLogoAsset;
-
-//   final Map<String, String> _logoAssets = {
-//     'WiFi': 'assets/logos/wifi.png',
-//     'Facebook': 'assets/logos/facebook.png',
-//     'YouTube': 'assets/logos/youtube.png',
-//     'WhatsApp': 'assets/logos/whatsapp.png',
-//     'Email': 'assets/logos/email.png',
-//   };
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     _checkFavoriteStatus();
-//   }
-
-//   Future<void> _exportSingleQrToCSV() async {
-//     try {
-//       StringBuffer csvBuilder = StringBuffer();
-//       csvBuilder.writeln("ID,Category,Content,Date,Is Barcode");
-
-//       String id = widget.itemId ?? DateTime.now().millisecondsSinceEpoch.toString();
-//       String excelId = '="$id"';
-//       String type = widget.isBarcodeResult ? 'barcode' : 'qr_code';
-//       String content = '"${widget.rawValue.replaceAll('"', '""')}"';
-      
-//       DateTime now = DateTime.now();
-//       String formattedDate = "${now.month}/${now.day}/${now.year % 100} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
-
-//       csvBuilder.writeln("$excelId,$type,$content,$formattedDate,${widget.isBarcodeResult}");
-
-//       if (kIsWeb) {
-//         final bytes = Uri.encodeComponent(csvBuilder.toString());
-//         final anchor = html.AnchorElement(href: "data:text/csv;charset=utf-8,%EF%BB%BF$bytes")
-//           ..setAttribute("download", "quickscan_item_${id}.csv")
-//           ..click();
-
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text('Item CSV downloaded successfully! 📊'), backgroundColor: Colors.blueAccent),
-//         );
-//       } else {
-//         Directory? directory;
-//         if (Platform.isAndroid) {
-//           directory = Directory('/storage/emulated/0/Download');
-//           if (!await directory.exists()) {
-//             directory = await getExternalStorageDirectory();
-//           }
-//         } else if (Platform.isIOS) {
-//           directory = await getApplicationDocumentsDirectory();
-//         }
-
-//         if (directory != null) {
-//           final String filePath = "${directory.path}/quickscan_item_${id}.csv";
-//           final File file = File(filePath);
-//           await file.writeAsString(csvBuilder.toString());
-
-//           if (!mounted) return;
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             SnackBar(
-//               content: Text('CSV saved to Downloads:\n$filePath 💾'),
-//               backgroundColor: Colors.green,
-//               duration: const Duration(seconds: 4),
-//             ),
-//           );
-//         }
-//       }
-//     } catch (e) {
-//       if (!mounted) return;
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(content: Text('CSV Export failed: $e'), backgroundColor: Colors.redAccent),
-//       );
-//     }
-//   }
-
-//   Future<void> _checkFavoriteStatus() async {
-//     if (widget.itemId != null && widget.itemId!.isNotEmpty) {
-//       final status = await HistoryService.isFavorite(widget.itemId!);
-//       if (mounted) {
-//         setState(() {
-//           _isFav = status;
-//         });
-//       }
-//     }
-//   }
-
-//   bool get _isWifi => widget.rawValue.startsWith('WIFI:');
-//   bool get _isEmail => widget.rawValue.startsWith('MATMSG:') || widget.rawValue.startsWith('mailto:');
-//   bool get _isPhone => widget.rawValue.startsWith('tel:');
-//   bool get _isSMS => widget.rawValue.startsWith('smsto:');
-//   bool get _isGeo => widget.rawValue.startsWith('geo:');
-//   bool get _isUrl => widget.rawValue.startsWith('http://') || widget.rawValue.startsWith('https://');
-//   bool get _isContact => widget.rawValue.startsWith('MCARD:') || widget.rawValue.startsWith('BEGIN:VCARD');
-
-//   Future<void> _launchURL(String urlString) async {
-//     try {
-//       String formattedUrl = urlString.trim();
-
-//       if (!formattedUrl.startsWith('http://') && 
-//           !formattedUrl.startsWith('https://') && 
-//           !formattedUrl.startsWith('mailto:') && 
-//           !formattedUrl.startsWith('tel:') && 
-//           !formattedUrl.startsWith('sms:') && 
-//           !formattedUrl.startsWith('mms:') && 
-//           !formattedUrl.startsWith('geo:')) {
-//         formattedUrl = 'https://$formattedUrl';
-//       }
-
-//       final Uri url = Uri.parse(formattedUrl);
-      
-//       bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
-//       if (!launched) {
-//         await launchUrl(url, mode: LaunchMode.platformDefault);
-//       }
-//     } catch (e) {
-//       debugPrint("Could not launch $urlString: $e");
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(backgroundColor: Colors.redAccent, content: Text("Cannot open link: $e")),
-//         );
-//       }
-//     }
-//   }
-
-//   void _searchOnGoogle() {
-//     final String query = Uri.encodeComponent(widget.rawValue.trim());
-//     _launchURL("https://www.google.com/search?q=$query");
-//   }
-
-//   void _openInMap() {
-//     String query = widget.rawValue;
-//     if (_isGeo) {
-//       query = widget.rawValue.replaceAll('geo:', '');
-//     }
-//     _launchURL("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}");
-//   }
-
-//   void _sendEmail() {
-//     String email = widget.rawValue;
-//     if (email.startsWith('MATMSG:')) {
-//       RegExp toExp = RegExp(r'TO:(.*?);');
-//       if (toExp.hasMatch(email)) {
-//         email = toExp.firstMatch(email)!.group(1) ?? '';
-//       }
-//     } else if (email.startsWith('mailto:')) {
-//       email = email.replaceAll('mailto:', '');
-//     }
-//     _launchURL("mailto:${email.trim()}");
-//   }
-
-//   Future<void> _connectToWifi() async {
-//     var locStatus = await Permission.location.request();
-//     if (!locStatus.isGranted) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(
-//             backgroundColor: Colors.orange,
-//             content: Text("Location permission & GPS are required to connect WiFi!"),
-//           ),
-//         );
-//       }
-//       return;
-//     }
-
-//     final String data = widget.rawValue;
-//     final parts = data.substring(5).split(';');
-//     String ssid = "";
-//     String pass = "";
-//     String security = "WPA"; 
-
-//     for (var part in parts) {
-//       if (part.startsWith('S:')) ssid = part.substring(2);
-//       if (part.startsWith('P:')) pass = part.substring(2);
-//       if (part.startsWith('T:')) security = part.substring(2);
-//     }
-
-//     if (ssid.isEmpty) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid WiFi QR Code: Missing SSID")));
-//       }
-//       return;
-//     }
-
-//     try {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(
-//             backgroundColor: Colors.blueAccent,
-//             content: Text("Connecting to Wi-Fi... Please wait."),
-//             duration: Duration(seconds: 2),
-//           ),
-//         );
-//       }
-
-//       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
-//       if (!isEnabled) {
-//         await WiFiForIoTPlugin.setEnabled(true);
-//       }
-
-//       NetworkSecurity sec = NetworkSecurity.WPA;
-//       final secUpper = security.toUpperCase();
-//       if (secUpper.contains('WEP')) {
-//         sec = NetworkSecurity.WEP;
-//       } else if (secUpper.contains('NOPASS') || secUpper.contains('NO PASS')) {
-//         sec = NetworkSecurity.NONE;
-//       }
-
-//       final isConnected = await WiFiForIoTPlugin.connect(
-//         ssid,
-//         password: pass,
-//         security: sec,
-//         joinOnce: false,
-//       );
-
-//       if (mounted) {
-//         if (isConnected) {
-//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
-//         } else {
-//           await WiFiForIoTPlugin.forceWifiUsage(true);
-//           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.orangeAccent, content: Text("Please check Wi-Fi settings to confirm connection.")));
-//         }
-//       }
-//     } catch (e) {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text("WiFi Connection error: $e")));
-//       }
-//     }
-//   }
-
-//   void _navigateToEditScreen() {
-//     String formType = 'text';
-//     String title = 'Edit Text';
-
-//     if (widget.isBarcodeResult) {
-//       formType = 'barcode';
-//       title = 'Edit Barcode';
-//     } else if (_isUrl) {
-//       formType = 'url';
-//       title = 'Edit URL';
-//     } else if (_isWifi) {
-//       formType = 'wifi';
-//       title = 'Edit WiFi';
-//     } else if (_isEmail) {
-//       formType = 'email';
-//       title = 'Edit Email';
-//     } else if (_isSMS) {
-//       formType = 'sms';
-//       title = 'Edit SMS';
-//     } else if (_isContact) {
-//       formType = 'contact';
-//       title = 'Edit Contact';
-//     } else if (_isPhone) {
-//       formType = 'phone';
-//       title = 'Edit Phone';
-//     }
-
-//     Navigator.push(
-//       context,
-//       MaterialPageRoute(
-//         builder: (context) => GenericFormScreen(
-//           formType: formType,
-//           title: title,
-//           isBarcode: widget.isBarcodeResult,
-//           initialData: widget.rawValue, 
-//         ),
-//       ),
-//     );
-//   }
-
-//   void _sendSMS({bool isMMS = false}) {
-//     final String cleanData = widget.rawValue.replaceAll('smsto:', '');
-//     final List<String> parts = cleanData.split(':');
-//     final String phone = parts.isNotEmpty ? parts[0] : '';
-//     final String message = parts.length > 1 ? parts[1] : '';
-
-//     if (isMMS) {
-//       _launchURL("mms:$phone?body=${Uri.encodeComponent(message)}");
-//     } else {
-//       _launchURL("sms:$phone?body=${Uri.encodeComponent(message)}");
-//     }
-//   }
-
-//   Future<void> _saveContactFromQR() async {
-//     final status = await fc.FlutterContacts.permissions.request(fc.PermissionType.readWrite);
-//     if (status == fc.PermissionStatus.granted) {
-//       try {
-//         String name = "QR Contact";
-//         String phone = "";
-//         if (widget.rawValue.contains('N:')) {
-//           name = widget.rawValue.split('N:')[1].split(';')[0];
-//         }
-//         if (widget.rawValue.contains('TEL:')) {
-//           phone = widget.rawValue.split('TEL:')[1].split(';')[0];
-//         }
-
-//         final newContact = fc.Contact(
-//           name: fc.Name(first: name),
-//           phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))] : [],
-//         );
-        
-//         await fc.FlutterContacts.create(newContact);
-
-//         if (mounted) {
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             const SnackBar(
-//               backgroundColor: Colors.green,
-//               content: Text('Contact added successfully to your phone! 🎉'),
-//             ),
-//           );
-//         }
-//       } catch (e) {
-//         if (mounted) {
-//           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
-//         }
-//       }
-//     } else {
-//       if (mounted) {
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text('Contacts permission denied.')),
-//         );
-//       }
-//     }
-//   }
-
-//   Future<Uint8List?> _captureQrImage() async {
-//     try {
-//       RenderRepaintBoundary boundary = _qrBoundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
-//       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
-//       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-//       return byteData?.buffer.asUint8List();
-//     } catch (e) {
-//       if (kDebugMode) {
-//         print("Error capturing QR image: $e");
-//       }
-//       return null;
-//     }
-//   }
-
-//   Future<void> _copyQrAction() async {
-//     Uint8List? pngBytes = await _captureQrImage();
-    
-//     if (pngBytes != null) {
-//       try {
-//         if (kIsWeb) {
-//           await Clipboard.setData(ClipboardData(text: widget.rawValue));
-//           if (!mounted) return;
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             const SnackBar(content: Text('QR Code content copied to clipboard! 📋')),
-//           );
-//         } else {
-//           await Pasteboard.writeImage(pngBytes);
-          
-//           if (!mounted) return;
-//           ScaffoldMessenger.of(context).showSnackBar(
-//             const SnackBar(
-//               backgroundColor: Colors.green,
-//               content: Text('Code PNG Image copied to clipboard! Now you can paste it anywhere. 📋🖼️'),
-//             ),
-//           );
-//         }
-//       } catch (e) {
-//         await Clipboard.setData(ClipboardData(text: widget.rawValue));
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text('Text content copied instead! 📋')),
-//         );
-//       }
-//     } else {
-//       await Clipboard.setData(ClipboardData(text: widget.rawValue));
-//     }
-//   }
-
-//   Future<void> _shareQrAction() async {
-//     Uint8List? pngBytes = await _captureQrImage();
-//     if (pngBytes != null) {
-//       try {
-//         if (kIsWeb) {
-//           Share.share(widget.rawValue, subject: 'Share QR Code');
-//         } else {
-//           final tempDir = await getTemporaryDirectory();
-//           final file = await File('${tempDir.path}/qr_code_share.png').create();
-//           await file.writeAsBytes(pngBytes);
-          
-//           await Share.shareXFiles([XFile(file.path)], text: 'Scan this QR Code!');
-//         }
-//       } catch (e) {
-//         if (kDebugMode) {
-//           print("Sharing failed: $e");
-//         }
-//       }
-//     } else {
-//       Share.share(widget.rawValue);
-//     }
-//   }
-
-//   Future<void> _saveQrAction() async {
-//     if (_isSaving) return;
-//     setState(() => _isSaving = true);
-
-//     Uint8List? pngBytes = await _captureQrImage();
-//     if (pngBytes == null) {
-//       setState(() => _isSaving = false);
-//       return;
-//     }
-
-//     if (kIsWeb) {
-//       try {
-//         final html.Blob blob = html.Blob([pngBytes]);
-//         final url = html.Url.createObjectUrlFromBlob(blob);
-//         final anchor = html.AnchorElement(href: url)
-//           ..setAttribute("download", "qrcode_${DateTime.now().millisecondsSinceEpoch}.png")
-//           ..click();
-//         html.Url.revokeObjectUrl(url);
-
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(content: Text('QR Code image downloaded successfully! 📥')),
-//         );
-//       } catch (e) {
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
-//       } finally {
-//         setState(() => _isSaving = false);
-//       }
-//     } else {
-//       try {
-//         final hasAccess = await Gal.hasAccess();
-//         if (!hasAccess) {
-//           await Gal.requestAccess();
-//         }
-
-//         final tempDir = await getTemporaryDirectory();
-//         final String filePath = '${tempDir.path}/qr_${DateTime.now().millisecondsSinceEpoch}.png';
-//         final File imgFile = File(filePath);
-//         await imgFile.writeAsBytes(pngBytes);
-
-//         await Gal.putImage(filePath);
-
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           const SnackBar(backgroundColor: Colors.green, content: Text('QR Code image saved to Gallery! 🎉')),
-//         );
-//       } catch (e) {
-//         if (!mounted) return;
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(backgroundColor: Colors.redAccent, content: Text('Failed to save image: $e')),
-//         );
-//       } finally {
-//         setState(() => _isSaving = false);
-//       }
-//     }
-//   }
-
-//   b_widget.Barcode _getBarcodeType(String tag) {
-//     String currentTag = tag.toLowerCase().trim();
-
-//     if (currentTag.isEmpty) {
-//       final isOnlyNumbers = RegExp(r'^\d+$').hasMatch(widget.rawValue);
-//       final isAlphanumeric = RegExp(r'^[A-Za-z0-9\-.\s+$%/]+$').hasMatch(widget.rawValue);
-
-//       if (isOnlyNumbers) {
-//         if (widget.rawValue.length == 8) {
-//           currentTag = 'ean8';
-//         } else if (widget.rawValue.length == 13) {
-//           currentTag = 'ean13';
-//         } else if (widget.rawValue.length == 12) {
-//           currentTag = 'upca';
-//         } else if (widget.rawValue.length == 14) {
-//           currentTag = 'itf14';
-//         } else {
-//           currentTag = 'code128';
-//         }
-//       } else if (isAlphanumeric) {
-//         if (widget.rawValue.startsWith('*') && widget.rawValue.endsWith('*')) {
-//           currentTag = 'code39';
-//         } else {
-//           currentTag = 'code128';
-//         }
-//       } else {
-//         currentTag = 'code128';
-//       }
-//     }
-
-//     switch (currentTag) {
-//       case 'ean8': return b_widget.Barcode.ean8();
-//       case 'ean13': return b_widget.Barcode.ean13();
-//       case 'upce': return b_widget.Barcode.code128();
-//       case 'upca': return b_widget.Barcode.upcA();
-//       case 'code39': return b_widget.Barcode.code39();
-//       case 'code93': return b_widget.Barcode.code93();
-//       case 'code128': return b_widget.Barcode.code128();
-//       case 'pdf417': return b_widget.Barcode.pdf417();
-//       case 'codabar': return b_widget.Barcode.codabar();
-//       default: return b_widget.Barcode.code128();
-//     }
-//   }
-
-//   ImageProvider? _getEmbeddedImage() {
-//     if (widget.customLogoPath != null && widget.customLogoPath!.isNotEmpty) {
-//       return FileImage(File(widget.customLogoPath!));
-//     }
-//     if (_selectedLogoAsset != null) {
-//       return AssetImage(_selectedLogoAsset!);
-//     }
-//     return null;
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: const Color(0xFF121212),
-//       appBar: AppBar(
-//         title: const Text('Result', style: TextStyle(color: Colors.white)),
-//         backgroundColor: Colors.transparent,
-//         elevation: 0,
-//         iconTheme: const IconThemeData(color: Colors.white),
-//         actions: [
-//           IconButton(
-//             icon: const Icon(Icons.edit_note_rounded, color: Colors.orangeAccent, size: 28),
-//             tooltip: 'Edit & Re-generate',
-//             onPressed: _navigateToEditScreen,
-//           ),
-//           if (widget.itemId != null)
-//             IconButton(
-//               icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber, size: 28),
-//               onPressed: () async {
-//                 await HistoryService.toggleFavorite(id: widget.itemId!);
-//                 setState(() {
-//                   _isFav = !_isFav;
-//                 });
-//               },
-//             ),
-//         ],
-//       ),
-//       body: SingleChildScrollView(
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.start,
-//           children: [
-//             Padding(
-//               padding: const EdgeInsets.all(16.0),
-//               child: Container(
-//                 width: double.infinity,
-//                 padding: const EdgeInsets.all(15),
-//                 decoration: BoxDecoration(
-//                   color: const Color(0xFF1E1E1E),
-//                   borderRadius: BorderRadius.circular(10),
-//                 ),
-//                 child: Text(
-//                   widget.rawValue,
-//                   style: const TextStyle(color: Colors.white, fontSize: 16),
-//                 ),
-//               ),
-//             ),
-
-//             const Divider(color: Colors.grey, height: 1),
-
-//             Padding(
-//               padding: const EdgeInsets.all(16.0),
-//               child: SingleChildScrollView(
-//                 scrollDirection: Axis.horizontal,
-//                 child: Row(
-//                   mainAxisAlignment: MainAxisAlignment.start,
-//                   children: _buildDynamicButtons(),
-//                 ),
-//               ),
-//             ),
-
-//             if (!widget.isBarcodeResult) ...[
-//               const Padding(
-//                 padding: EdgeInsets.symmetric(horizontal: 20.0),
-//                 child: Text('Select Center Logo (Optional)', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
-//               ),
-//               const SizedBox(height: 8),
-//               Container(
-//                 height: 50,
-//                 padding: const EdgeInsets.symmetric(horizontal: 20.0),
-//                 child: ListView(
-//                   scrollDirection: Axis.horizontal,
-//                   children: [
-//                     GestureDetector(
-//                       onTap: () => setState(() => _selectedLogoAsset = null),
-//                       child: Container(
-//                         margin: const EdgeInsets.only(right: 12),
-//                         width: 42,
-//                         decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white10, border: Border.all(color: Colors.white24)),
-//                         child: const Icon(Icons.block, color: Colors.redAccent, size: 18),
-//                       ),
-//                     ),
-//                     ..._logoAssets.entries.map((entry) {
-//                       final isSelected = _selectedLogoAsset == entry.value;
-//                       return GestureDetector(
-//                         onTap: () => setState(() => _selectedLogoAsset = entry.value),
-//                         child: Container(
-//                           margin: const EdgeInsets.only(right: 12),
-//                           padding: const EdgeInsets.all(4),
-//                           width: 42,
-//                           decoration: BoxDecoration(
-//                             color: Colors.white,
-//                             shape: BoxShape.circle,
-//                             border: Border.all(color: isSelected ? Colors.blue : Colors.transparent, width: 2.5),
-//                           ),
-//                           child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
-//                         ),
-//                       );
-//                     }),
-//                   ],
-//                 ),
-//               ),
-//             ],
-
-//             const SizedBox(height: 30),
-
-//             // 🎯 [সংশোধিত] QrImageView-এ Error Correction & Circular Logo Padding যুক্ত করা হয়েছে
-//             Center(
-//               child: RepaintBoundary(
-//                 key: _qrBoundaryKey,
-//                 child: Container(
-//                   color: widget.qrBgColor, 
-//                   padding: const EdgeInsets.all(16),
-//                   child: widget.isBarcodeResult
-//                       ? b_widget.BarcodeWidget(
-//                           barcode: _getBarcodeType(widget.barcodeTypeTag),
-//                           data: widget.rawValue.isEmpty ? "12345678" : widget.rawValue,
-//                           width: 250,
-//                           height: 90,
-//                           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-//                           errorBuilder: (context, error) => const Text('Invalid data format', style: TextStyle(color: Colors.red)),
-//                         )
-//                       : QrImageView(
-//                           data: widget.rawValue, 
-//                           version: QrVersions.auto, 
-//                           size: 160.0,
-//                           gapless: true,
-//                           // 🛡️ Error Correction level H (High): ৩০% ডাটা কাভার হলেও স্ক্যান হবে
-//                           errorCorrectionLevel: QrErrorCorrectLevel.H,
-//                           eyeStyle: QrEyeStyle(
-//                             eyeShape: QrEyeShape.square,
-//                             color: widget.qrColor,
-//                           ),
-//                           dataModuleStyle: QrDataModuleStyle(
-//                             dataModuleShape: QrDataModuleShape.square,
-//                             color: widget.qrColor,
-//                           ),
-//                           embeddedImage: _getEmbeddedImage(),
-//                           embeddedImageStyle: const QrEmbeddedImageStyle(
-//                             size: Size(34, 34),
-//                           ),
-//                         ),
-//                 ),
-//               ),
-//             ),
-            
-//             const SizedBox(height: 40),
-//           ],
-//         ),
-//       ),
-//       bottomNavigationBar: _buildUniversalBottomBar(),
-//     );
-//   }
-
-//   List<Widget> _buildDynamicButtons() {
-//     List<Widget> buttons = [];
-
-//     buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
-//     buttons.add(const SizedBox(width: 20));
-
-//     if (_isWifi) {
-//       buttons.add(_actionIconButton(icon: Icons.wifi, label: 'Connect', onTap: _connectToWifi));
-//     }
-//     else if (_isEmail) {
-//       buttons.add(_actionIconButton(
-//         icon: Icons.email_outlined,
-//         label: 'Send Email',
-//         onTap: _sendEmail,
-//       ));
-//     }
-//     else if (_isPhone) {
-//       buttons.add(_actionIconButton(icon: Icons.phone, label: 'Call', onTap: () => _launchURL(widget.rawValue)));
-//     }
-//     else if (_isContact) {
-//       buttons.add(_actionIconButton(icon: Icons.person_add_alt_1_rounded, label: 'Add contact', onTap: _saveContactFromQR));
-//     }
-//     else if (_isSMS) {
-//       buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: () => _sendSMS(isMMS: false)));
-//       buttons.add(const SizedBox(width: 20));
-//       buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: () => _sendSMS(isMMS: true)));
-//     }
-//     else if (_isGeo || widget.rawValue.toLowerCase().contains('bangladesh') || widget.rawValue.toLowerCase().contains('dhaka')) {
-//       buttons.add(_actionIconButton(icon: Icons.location_on_rounded, label: 'Show Map', onTap: _openInMap));
-//     }
-//     else if (_isUrl) {
-//       buttons.add(_actionIconButton(icon: Icons.open_in_browser, label: 'Open', onTap: () => _launchURL(widget.rawValue)));
-//     }
-//     else {
-//       buttons.add(_actionIconButton(icon: Icons.search, label: 'Search Google', onTap: _searchOnGoogle));
-//     }
-
-//     return buttons;
-//   }
-
-//   Widget _actionIconButton({required IconData icon, required String label, required VoidCallback onTap}) {
-//     return InkWell(
-//       onTap: onTap,
-//       child: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           Icon(icon, color: Colors.blue, size: 36),
-//           const SizedBox(height: 8),
-//           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-//         ],
-//       ),
-//     );
-//   }
-
-//   Widget _buildUniversalBottomBar() {
-//     return Container(
-//       color: const Color(0xFF1E1E1E),
-//       padding: const EdgeInsets.symmetric(vertical: 12),
-//       child: Row(
-//         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//         children: [
-//           IconButton(
-//             icon: const Icon(Icons.copy, color: Colors.white),
-//             onPressed: _copyQrAction,
-//             tooltip: 'Copy Code',
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.share, color: Colors.white),
-//             onPressed: _shareQrAction,
-//             tooltip: 'Share QR Image',
-//           ),
-//           IconButton(
-//             icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
-//             onPressed: _exportSingleQrToCSV,
-//             tooltip: 'Export CSV Data',
-//           ),
-//           _isSaving 
-//               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-//               : IconButton(
-//                   icon: const Icon(Icons.save, color: Colors.white),
-//                   onPressed: _saveQrAction,
-//                   tooltip: 'Save QR Image',
-//                 ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-
-
-
-
-
-
-
-
 // lib/screens/scan_result_screen.dart
+import 'dart:core' as core;
+import 'dart:core';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -818,25 +11,24 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:barcode_widget/barcode_widget.dart' as b_widget;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:wifi_iot/wifi_iot.dart'; 
-import 'package:flutter_contacts/flutter_contacts.dart' as fc; 
+import 'package:wifi_iot/wifi_iot.dart';
+import 'package:flutter_contacts/flutter_contacts.dart' as fc;
 import 'package:permission_handler/permission_handler.dart';
-import 'package:universal_html/html.dart' as html; 
-import 'package:path_provider/path_provider.dart'; 
-import 'package:gal/gal.dart'; 
-import 'package:pasteboard/pasteboard.dart'; 
-import 'dart:io';
+import 'package:universal_html/html.dart' as html;
+import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
+import 'package:pasteboard/pasteboard.dart';
 import '../services/history_service.dart';
-import './generic_form_screen.dart'; 
+import './generic_form_screen.dart';
 
 class ScanResultScreen extends StatefulWidget {
   final String rawValue;
   final bool isBarcodeResult;
   final String barcodeTypeTag;
   final String? itemId;
-  final Color qrColor; 
-  final Color qrBgColor; 
-  final String? customLogoPath; 
+  final Color qrColor;
+  final Color qrBgColor;
+  final String? customLogoPath;
 
   const ScanResultScreen({
     super.key,
@@ -844,9 +36,9 @@ class ScanResultScreen extends StatefulWidget {
     this.isBarcodeResult = false,
     this.barcodeTypeTag = "",
     this.itemId,
-    this.qrColor = Colors.black, 
-    this.qrBgColor = Colors.white, 
-    this.customLogoPath, 
+    this.qrColor = Colors.black,
+    this.qrBgColor = Colors.white,
+    this.customLogoPath,
   });
 
   @override
@@ -855,19 +47,19 @@ class ScanResultScreen extends StatefulWidget {
 
 class _ScanResultScreenState extends State<ScanResultScreen> {
   bool _isFav = false;
-  bool _isSaving = false; 
-  
-  final GlobalKey _qrBoundaryKey = GlobalKey(); 
+  bool _isSaving = false;
+
+  final GlobalKey _qrBoundaryKey = GlobalKey();
   String? _selectedLogoAsset;
 
-  // --- নতুন QR কাস্টমাইজেশন স্টেট ভেরিয়েবলসমূহ ---
+  // কাস্টমাইজেশন স্টেট ভেরিয়েবলসমূহ
   late Color _dotsColor;
   late Color _eyeColor;
   late Color _bgColor;
   QrDataModuleShape _dotShape = QrDataModuleShape.square;
   QrEyeShape _eyeShape = QrEyeShape.square;
-  double _dotScale = 1.0; // 0.6 to 1.0 (gapless false করলে gap তৈরি হয়)
-  String _selectedFrame = 'None'; // 'None', 'Simple Border', 'Scan Me Bottom', 'Badge Top'
+  double _dotScale = 1.0;
+  String _selectedFrame = 'None';
   int _selectedTemplateIndex = 0;
 
   final Map<String, String> _logoAssets = {
@@ -878,22 +70,21 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     'Email': 'assets/logos/email.png',
   };
 
-  final List<Color> _paletteColors = [
+  final core.List<Color> _paletteColors = [
     Colors.black,
     Colors.white,
-    const Color(0xFF1E3A8A), // Deep Blue
-    const Color(0xFF2563EB), // Royal Blue
-    const Color(0xFF059669), // Emerald
-    const Color(0xFFDC2626), // Crimson Red
-    const Color(0xFF7C3AED), // Purple
-    const Color(0xFFD97706), // Amber
-    const Color(0xFFDB2777), // Pink
-    const Color(0xFFFEF3C7), // Cream Bg
-    const Color(0xFFDBEAFE), // Soft Blue Bg
+    const Color(0xFF1E3A8A),
+    const Color(0xFF2563EB),
+    const Color(0xFF059669),
+    const Color(0xFFDC2626),
+    const Color(0xFF7C3AED),
+    const Color(0xFFD97706),
+    const Color(0xFFDB2777),
+    const Color(0xFFFEF3C7),
+    const Color(0xFFDBEAFE),
   ];
 
-  // রেডিমেড টেমপ্লেট লিস্ট
-  final List> _templates = [
+  final core.List<core.Map<core.String, core.dynamic>> _templates = [
     {
       'name': 'Classic',
       'dots': Colors.black,
@@ -954,12 +145,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     final t = _templates[index];
     setState(() {
       _selectedTemplateIndex = index;
-      _dotsColor = t['dots'];
-      _eyeColor = t['eye'];
-      _bgColor = t['bg'];
-      _dotShape = t['dotShape'];
-      _eyeShape = t['eyeShape'];
-      _selectedFrame = t['frame'];
+      _dotsColor = t['dots'] as Color;
+      _eyeColor = t['eye'] as Color;
+      _bgColor = t['bg'] as Color;
+      _dotShape = t['dotShape'] as QrDataModuleShape;
+      _eyeShape = t['eyeShape'] as QrEyeShape;
+      _selectedFrame = t['frame'] as String;
     });
   }
 
@@ -972,9 +163,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       String excelId = '="$id"';
       String type = widget.isBarcodeResult ? 'barcode' : 'qr_code';
       String content = '"${widget.rawValue.replaceAll('"', '""')}"';
-      
+
       DateTime now = DateTime.now();
-      String formattedDate = "${now.month}/${now.day}/${now.year % 100} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
+      String formattedDate =
+          "${now.month}/${now.day}/${now.year % 100} ${now.hour % 12 == 0 ? 12 : now.hour % 12}:${now.minute.toString().padLeft(2, '0')} ${now.hour >= 12 ? 'PM' : 'AM'}";
 
       csvBuilder.writeln("$excelId,$type,$content,$formattedDate,${widget.isBarcodeResult}");
 
@@ -986,7 +178,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Item CSV downloaded successfully! 📊'), backgroundColor: Colors.blueAccent),
+          const SnackBar(
+            content: Text('Item CSV downloaded successfully! 📊'),
+            backgroundColor: Colors.blueAccent,
+          ),
         );
       } else {
         Directory? directory;
@@ -1017,7 +212,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV Export failed: $e'), backgroundColor: Colors.redAccent),
+        SnackBar(
+          content: Text('CSV Export failed: $e'),
+          backgroundColor: Colors.redAccent,
+        ),
       );
     }
   }
@@ -1044,12 +242,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   Future<void> _launchURL(String urlString) async {
     try {
       String formattedUrl = urlString.trim();
-      if (!formattedUrl.startsWith('http://') && 
-          !formattedUrl.startsWith('https://') && 
-          !formattedUrl.startsWith('mailto:') && 
-          !formattedUrl.startsWith('tel:') && 
-          !formattedUrl.startsWith('sms:') && 
-          !formattedUrl.startsWith('mms:') && 
+      if (!formattedUrl.startsWith('http://') &&
+          !formattedUrl.startsWith('https://') &&
+          !formattedUrl.startsWith('mailto:') &&
+          !formattedUrl.startsWith('tel:') &&
+          !formattedUrl.startsWith('sms:') &&
+          !formattedUrl.startsWith('mms:') &&
           !formattedUrl.startsWith('geo:')) {
         formattedUrl = 'https://$formattedUrl';
       }
@@ -1060,9 +258,13 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         await launchUrl(url, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
+      debugPrint("Could not launch $urlString: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: Colors.redAccent, content: Text("Cannot open link: $e")),
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text("Cannot open link: $e"),
+          ),
         );
       }
     }
@@ -1099,17 +301,20 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     if (!locStatus.isGranted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Colors.orange, content: Text("Location permission & GPS are required to connect WiFi!")),
+          const SnackBar(
+            backgroundColor: Colors.orange,
+            content: Text("Location permission & GPS are required to connect WiFi!"),
+          ),
         );
       }
       return;
     }
 
     final String data = widget.rawValue;
-    final parts = data.substring(5).split(';');
+    final core.List<String> parts = data.substring(5).split(';');
     String ssid = "";
     String pass = "";
-    String security = "WPA"; 
+    String security = "WPA";
 
     for (var part in parts) {
       if (part.startsWith('S:')) ssid = part.substring(2);
@@ -1119,12 +324,24 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
     if (ssid.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Invalid WiFi QR Code: Missing SSID")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Invalid WiFi QR Code: Missing SSID")),
+        );
       }
       return;
     }
 
     try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.blueAccent,
+            content: Text("Connecting to Wi-Fi... Please wait."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
       if (!isEnabled) {
         await WiFiForIoTPlugin.setEnabled(true);
@@ -1138,19 +355,39 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         sec = NetworkSecurity.NONE;
       }
 
-      final isConnected = await WiFiForIoTPlugin.connect(ssid, password: pass, security: sec, joinOnce: false);
+      final isConnected = await WiFiForIoTPlugin.connect(
+        ssid,
+        password: pass,
+        security: sec,
+        joinOnce: false,
+      );
 
       if (mounted) {
         if (isConnected) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.green, content: Text("Connected successfully! 🎉")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text("Connected successfully! 🎉"),
+            ),
+          );
         } else {
           await WiFiForIoTPlugin.forceWifiUsage(true);
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(backgroundColor: Colors.orangeAccent, content: Text("Please check Wi-Fi settings to confirm connection.")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.orangeAccent,
+              content: Text("Please check Wi-Fi settings to confirm connection."),
+            ),
+          );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text("WiFi Connection error: $e")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text("WiFi Connection error: $e"),
+          ),
+        );
       }
     }
   }
@@ -1189,7 +426,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           formType: formType,
           title: title,
           isBarcode: widget.isBarcodeResult,
-          initialData: widget.rawValue, 
+          initialData: widget.rawValue,
         ),
       ),
     );
@@ -1197,7 +434,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
   void _sendSMS({bool isMMS = false}) {
     final String cleanData = widget.rawValue.replaceAll('smsto:', '');
-    final List<String> parts = cleanData.split(':');
+    final core.List<String> parts = cleanData.split(':');
     final String phone = parts.isNotEmpty ? parts[0] : '';
     final String message = parts.length > 1 ? parts[1] : '';
 
@@ -1223,35 +460,48 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
         final newContact = fc.Contact(
           name: fc.Name(first: name),
-          phones: phone.isNotEmpty ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))] : [],
+          phones: phone.isNotEmpty
+              ? [fc.Phone(number: phone, label: fc.Label(fc.PhoneLabel.mobile))]
+              : [],
         );
-        
+
         await fc.FlutterContacts.create(newContact);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: Colors.green, content: Text('Contact added successfully to your phone! 🎉')),
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Contact added successfully to your phone! 🎉'),
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed: $e')),
+          );
         }
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contacts permission denied.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Contacts permission denied.')),
+        );
       }
     }
   }
 
   Future<Uint8List?> _captureQrImage() async {
     try {
-      RenderRepaintBoundary boundary = _qrBoundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      RenderRepaintBoundary boundary =
+          _qrBoundaryKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       ui.Image image = await boundary.toImage(pixelRatio: 3.0);
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
+      if (kDebugMode) {
+        print("Error capturing QR image: $e");
+      }
       return null;
     }
   }
@@ -1263,16 +513,25 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         if (kIsWeb) {
           await Clipboard.setData(ClipboardData(text: widget.rawValue));
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('QR Code content copied to clipboard! 📋')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('QR Code content copied to clipboard! 📋')),
+          );
         } else {
           await Pasteboard.writeImage(pngBytes);
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(backgroundColor: Colors.green, content: Text('Code PNG Image copied to clipboard! 📋🖼️')),
+            const SnackBar(
+              backgroundColor: Colors.green,
+              content: Text('Code PNG Image copied to clipboard! Now you can paste it anywhere. 📋🖼️'),
+            ),
           );
         }
       } catch (e) {
         await Clipboard.setData(ClipboardData(text: widget.rawValue));
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Text content copied instead! 📋')),
+        );
       }
     } else {
       await Clipboard.setData(ClipboardData(text: widget.rawValue));
@@ -1318,7 +577,14 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           ..click();
         html.Url.revokeObjectUrl(url);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('QR Code image downloaded successfully! 📥')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('QR Code image downloaded successfully! 📥')),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e')),
+        );
       } finally {
         setState(() => _isSaving = false);
       }
@@ -1335,11 +601,19 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(backgroundColor: Colors.green, content: Text('QR Code image saved to Gallery! 🎉')),
+          const SnackBar(
+            backgroundColor: Colors.green,
+            content: Text('QR Code image saved to Gallery! 🎉'),
+          ),
         );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text('Failed to save image: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text('Failed to save image: $e'),
+          ),
+        );
       } finally {
         setState(() => _isSaving = false);
       }
@@ -1350,26 +624,52 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     String currentTag = tag.toLowerCase().trim();
     if (currentTag.isEmpty) {
       final isOnlyNumbers = RegExp(r'^\d+$').hasMatch(widget.rawValue);
+      final isAlphanumeric = RegExp(r'^[A-Za-z0-9\-.\s+$%/]+$').hasMatch(widget.rawValue);
+
       if (isOnlyNumbers) {
-        if (widget.rawValue.length == 8) currentTag = 'ean8';
-        else if (widget.rawValue.length == 13) currentTag = 'ean13';
-        else if (widget.rawValue.length == 12) currentTag = 'upca';
-        else if (widget.rawValue.length == 14) currentTag = 'itf14';
-        else currentTag = 'code128';
+        if (widget.rawValue.length == 8) {
+          currentTag = 'ean8';
+        } else if (widget.rawValue.length == 13) {
+          currentTag = 'ean13';
+        } else if (widget.rawValue.length == 12) {
+          currentTag = 'upca';
+        } else if (widget.rawValue.length == 14) {
+          currentTag = 'itf14';
+        } else {
+          currentTag = 'code128';
+        }
+      } else if (isAlphanumeric) {
+        if (widget.rawValue.startsWith('*') && widget.rawValue.endsWith('*')) {
+          currentTag = 'code39';
+        } else {
+          currentTag = 'code128';
+        }
       } else {
         currentTag = 'code128';
       }
     }
 
     switch (currentTag) {
-      case 'ean8': return b_widget.Barcode.ean8();
-      case 'ean13': return b_widget.Barcode.ean13();
-      case 'upca': return b_widget.Barcode.upcA();
-      case 'code39': return b_widget.Barcode.code39();
-      case 'code93': return b_widget.Barcode.code93();
-      case 'pdf417': return b_widget.Barcode.pdf417();
-      case 'codabar': return b_widget.Barcode.codabar();
-      default: return b_widget.Barcode.code128();
+      case 'ean8':
+        return b_widget.Barcode.ean8();
+      case 'ean13':
+        return b_widget.Barcode.ean13();
+      case 'upce':
+        return b_widget.Barcode.code128();
+      case 'upca':
+        return b_widget.Barcode.upcA();
+      case 'code39':
+        return b_widget.Barcode.code39();
+      case 'code93':
+        return b_widget.Barcode.code93();
+      case 'code128':
+        return b_widget.Barcode.code128();
+      case 'pdf417':
+        return b_widget.Barcode.pdf417();
+      case 'codabar':
+        return b_widget.Barcode.codabar();
+      default:
+        return b_widget.Barcode.code128();
     }
   }
 
@@ -1383,7 +683,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return null;
   }
 
-  // 🖼️ কাস্টম ফ্রেম র‍্যাপার উইজেট
   Widget _buildFramedQrContainer(Widget qrChild) {
     if (_selectedFrame == 'Simple Border') {
       return Container(
@@ -1416,7 +715,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
               ),
               child: const Text(
                 'SCAN ME',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 13,
+                  letterSpacing: 1.5,
+                ),
               ),
             ),
           ],
@@ -1441,7 +745,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
               ),
               child: const Text(
                 'SCAN HERE',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.2),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
             const SizedBox(height: 10),
@@ -1451,7 +760,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       );
     }
 
-    // Default 'None'
     return Container(
       color: _bgColor,
       padding: const EdgeInsets.all(16),
@@ -1488,28 +796,26 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // স্ক্যান বা জেনারেট করা টেক্সট বক্স
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.all(16.0),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   widget.rawValue,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
             ),
 
-            // ডাইনামিক অ্যাকশন বাটন রো
+            const Divider(color: Colors.grey, height: 1),
+
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              padding: const EdgeInsets.all(16.0),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1521,7 +827,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
             const SizedBox(height: 15),
 
-            // 🎯 লাইভ QR / Barcode প্রিভিউ এরিয়া
+            // QR কোড এবং ফ্রেম (RepaintBoundary এর ভেতরে যাতে একসাথে সেভ হয়)
             Center(
               child: RepaintBoundary(
                 key: _qrBoundaryKey,
@@ -1535,15 +841,18 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                           width: 250,
                           height: 90,
                           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                          errorBuilder: (context, error) => const Text('Invalid data format', style: TextStyle(color: Colors.red)),
+                          errorBuilder: (context, error) => const Text(
+                            'Invalid data format',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       )
                     : _buildFramedQrContainer(
                         QrImageView(
-                          data: widget.rawValue, 
-                          version: QrVersions.auto, 
-                          size: 185.0,
-                          gapless: _dotScale >= 0.9, // স্কেল কমালে ডটগুলোর মাঝে গ্যাপ তৈরি হবে
+                          data: widget.rawValue,
+                          version: QrVersions.auto,
+                          size: 175.0,
+                          gapless: _dotScale >= 0.9,
                           errorCorrectionLevel: QrErrorCorrectLevel.H,
                           eyeStyle: QrEyeStyle(
                             eyeShape: _eyeShape,
@@ -1562,13 +871,13 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
             const SizedBox(height: 25),
 
-            // 🎨 অ্যাডভান্সড QR কাস্টমাইজেশন প্যানেল (Accordion Style)
+            // কাস্টমাইজেশন অ্যাকর্ডিয়ন মেনুসমূহ (যদি বারকোড না হয়)
             if (!widget.isBarcodeResult)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   children: [
-                    // ১. Templates Section
+                    // ১. Templates
                     _buildAccordionSection(
                       icon: Icons.palette_outlined,
                       title: 'Templates',
@@ -1587,7 +896,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                                 margin: const EdgeInsets.only(right: 10),
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: t['bg'],
+                                  color: t['bg'] as Color,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isSelected ? Colors.blueAccent : Colors.white24,
@@ -1597,11 +906,15 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.qr_code_2, color: t['eye'], size: 22),
+                                    Icon(Icons.qr_code_2, color: t['eye'] as Color, size: 22),
                                     const SizedBox(height: 2),
                                     Text(
-                                      t['name'],
-                                      style: TextStyle(color: t['dots'], fontSize: 11, fontWeight: FontWeight.bold),
+                                      t['name'] as String,
+                                      style: TextStyle(
+                                        color: t['dots'] as Color,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -1614,7 +927,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
                     const SizedBox(height: 10),
 
-                    // ২. Appearance (Colors & Dots Scale)
+                    // ২. Appearance & Dots Size
                     _buildAccordionSection(
                       icon: Icons.color_lens_outlined,
                       title: 'Appearance & Dots Size',
@@ -1648,7 +961,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
                     const SizedBox(height: 10),
 
-                    // ৩. Shape & Form (Dots & Marker Shape)
+                    // ৩. Shape & Form
                     _buildAccordionSection(
                       icon: Icons.grid_view_rounded,
                       title: 'Shape & Form',
@@ -1659,13 +972,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              _buildShapeChip('Square Dots', Icons.crop_square, _dotShape == QrDataModuleShape.square, () {
-                                setState(() => _dotShape = QrDataModuleShape.square);
-                              }),
+                              _buildShapeChip('Square Dots', Icons.crop_square, _dotShape == QrDataModuleShape.square, () => setState(() => _dotShape = QrDataModuleShape.square)),
                               const SizedBox(width: 12),
-                              _buildShapeChip('Circle Dots', Icons.circle, _dotShape == QrDataModuleShape.circle, () {
-                                setState(() => _dotShape = QrDataModuleShape.circle);
-                              }),
+                              _buildShapeChip('Circle Dots', Icons.circle, _dotShape == QrDataModuleShape.circle, () => setState(() => _dotShape = QrDataModuleShape.circle)),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -1673,13 +982,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              _buildShapeChip('Square Marker', Icons.check_box_outline_blank, _eyeShape == QrEyeShape.square, () {
-                                setState(() => _eyeShape = QrEyeShape.square);
-                              }),
+                              _buildShapeChip('Square Marker', Icons.check_box_outline_blank, _eyeShape == QrEyeShape.square, () => setState(() => _eyeShape = QrEyeShape.square)),
                               const SizedBox(width: 12),
-                              _buildShapeChip('Circle Marker', Icons.radio_button_unchecked, _eyeShape == QrEyeShape.circle, () {
-                                setState(() => _eyeShape = QrEyeShape.circle);
-                              }),
+                              _buildShapeChip('Circle Marker', Icons.radio_button_unchecked, _eyeShape == QrEyeShape.circle, () => setState(() => _eyeShape = QrEyeShape.circle)),
                             ],
                           ),
                         ],
@@ -1688,7 +993,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
                     const SizedBox(height: 10),
 
-                    // ৪. Frames Section
+                    // ৪. Frames
                     _buildAccordionSection(
                       icon: Icons.crop_free_rounded,
                       title: 'Frames',
@@ -1715,7 +1020,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
                     const SizedBox(height: 10),
 
-                    // ৫. Logo Section
+                    // ৫. Center Logo
                     _buildAccordionSection(
                       icon: Icons.image_outlined,
                       title: 'Center Logo',
@@ -1729,7 +1034,11 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                               child: Container(
                                 margin: const EdgeInsets.only(right: 12),
                                 width: 42,
-                                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white10, border: Border.all(color: Colors.white24)),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white10,
+                                  border: Border.all(color: Colors.white24),
+                                ),
                                 child: const Icon(Icons.block, color: Colors.redAccent, size: 18),
                               ),
                             ),
@@ -1744,9 +1053,16 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                                   decoration: BoxDecoration(
                                     color: Colors.white,
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: isSelected ? Colors.blue : Colors.transparent, width: 2.5),
+                                    border: Border.all(
+                                      color: isSelected ? Colors.blue : Colors.transparent,
+                                      width: 2.5,
+                                    ),
                                   ),
-                                  child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
+                                  child: Image.asset(
+                                    entry.value,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16),
+                                  ),
                                 ),
                               );
                             }),
@@ -1758,7 +1074,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                 ),
               ),
 
-            const SizedBox(height: 35),
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -1766,7 +1082,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  // অ্যাকর্ডিয়ন কার্ড হেল্পার
   Widget _buildAccordionSection({
     required IconData icon,
     required String title,
@@ -1784,7 +1099,14 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         child: ExpansionTile(
           initiallyExpanded: initiallyExpanded,
           leading: Icon(icon, color: Colors.blueAccent, size: 22),
-          title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+          title: Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+          ),
           iconColor: Colors.white70,
           collapsedIconColor: Colors.white54,
           childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -1794,7 +1116,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  // কালার পিকার রো হেল্পার
   Widget _buildColorSelectorRow(String label, Color currentColor, Function(Color) onSelect) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1808,7 +1129,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             itemCount: _paletteColors.length,
             itemBuilder: (context, index) {
               final color = _paletteColors[index];
-              final isSelected = currentColor.value == color.value;
+              final isSelected = currentColor.toARGB32() == color.toARGB32();
               return GestureDetector(
                 onTap: () => onSelect(color),
                 child: Container(
@@ -1824,7 +1145,13 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
                     ),
                   ),
                   child: isSelected
-                      ? Icon(Icons.check, size: 16, color: color == Colors.white || color.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                      ? Icon(
+                          Icons.check,
+                          size: 16,
+                          color: color == Colors.white || color.computeLuminance() > 0.5
+                              ? Colors.black
+                              : Colors.white,
+                        )
                       : null,
                 ),
               );
@@ -1835,7 +1162,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  // শেপ বাটন হেল্পার
   Widget _buildShapeChip(String label, IconData icon, bool isSelected, VoidCallback onTap) {
     return Expanded(
       child: GestureDetector(
@@ -1843,9 +1169,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.blueAccent.withOpacity(0.2) : Colors.white10,
+            color: isSelected ? Colors.blueAccent.withValues(alpha: 0.2) : Colors.white10,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white12, width: 1.5),
+            border: Border.all(
+              color: isSelected ? Colors.blueAccent : Colors.white12,
+              width: 1.5,
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1867,15 +1196,20 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
-  List<Widget> _buildDynamicButtons() {
-    List<Widget> buttons = [];
+  core.List<Widget> _buildDynamicButtons() {
+    core.List<Widget> buttons = [];
+
     buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
     buttons.add(const SizedBox(width: 20));
 
     if (_isWifi) {
       buttons.add(_actionIconButton(icon: Icons.wifi, label: 'Connect', onTap: _connectToWifi));
     } else if (_isEmail) {
-      buttons.add(_actionIconButton(icon: Icons.email_outlined, label: 'Send Email', onTap: _sendEmail));
+      buttons.add(_actionIconButton(
+        icon: Icons.email_outlined,
+        label: 'Send Email',
+        onTap: _sendEmail,
+      ));
     } else if (_isPhone) {
       buttons.add(_actionIconButton(icon: Icons.phone, label: 'Call', onTap: () => _launchURL(widget.rawValue)));
     } else if (_isContact) {
@@ -1891,6 +1225,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     } else {
       buttons.add(_actionIconButton(icon: Icons.search, label: 'Search Google', onTap: _searchOnGoogle));
     }
+
     return buttons;
   }
 
@@ -1900,9 +1235,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.blue, size: 30),
-          const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
+          Icon(icon, color: Colors.blue, size: 36),
+          const SizedBox(height: 8),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
         ],
       ),
     );
@@ -1915,12 +1250,28 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(icon: const Icon(Icons.copy, color: Colors.white), onPressed: _copyQrAction, tooltip: 'Copy Code'),
-          IconButton(icon: const Icon(Icons.share, color: Colors.white), onPressed: _shareQrAction, tooltip: 'Share QR Image'),
-          IconButton(icon: const Icon(Icons.description_outlined, color: Colors.greenAccent), onPressed: _exportSingleQrToCSV, tooltip: 'Export CSV Data'),
-          _isSaving 
+          IconButton(
+            icon: const Icon(Icons.copy, color: Colors.white),
+            onPressed: _copyQrAction,
+            tooltip: 'Copy Code',
+          ),
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: _shareQrAction,
+            tooltip: 'Share QR Image',
+          ),
+          IconButton(
+            icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
+            onPressed: _exportSingleQrToCSV,
+            tooltip: 'Export CSV Data',
+          ),
+          _isSaving
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : IconButton(icon: const Icon(Icons.save, color: Colors.white), onPressed: _saveQrAction, tooltip: 'Save QR Image'),
+              : IconButton(
+                  icon: const Icon(Icons.save, color: Colors.white),
+                  onPressed: _saveQrAction,
+                  tooltip: 'Save QR Image',
+                ),
         ],
       ),
     );
