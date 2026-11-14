@@ -1,11 +1,6 @@
 
 
-
-
-
-
-
-// lib/screens/scan_result_screen.dart
+// // lib/screens/scan_result_screen.dart
 // import 'dart:convert';
 // import 'dart:ui' as ui;
 // import 'package:flutter/foundation.dart';
@@ -73,7 +68,6 @@
 //     _checkFavoriteStatus();
 //   }
 
-//   // --- একক QR / Barcode-এর জন্য CSV ডাউনলোড মেথড ---
 //   Future<void> _exportSingleQrToCSV() async {
 //     try {
 //       StringBuffer csvBuilder = StringBuffer();
@@ -152,12 +146,10 @@
 //   bool get _isUrl => widget.rawValue.startsWith('http://') || widget.rawValue.startsWith('https://');
 //   bool get _isContact => widget.rawValue.startsWith('MCARD:') || widget.rawValue.startsWith('BEGIN:VCARD');
 
-//   // 🚀 [সংশোধিত] ইউনিভার্সাল URL Launching Method
 //   Future<void> _launchURL(String urlString) async {
 //     try {
 //       String formattedUrl = urlString.trim();
 
-//       // যদি প্রোটোকল না থাকে তবে https:// যুক্ত করা
 //       if (!formattedUrl.startsWith('http://') && 
 //           !formattedUrl.startsWith('https://') && 
 //           !formattedUrl.startsWith('mailto:') && 
@@ -170,11 +162,8 @@
 
 //       final Uri url = Uri.parse(formattedUrl);
       
-//       // External Application মোডে সরাসরি ওপেন করার চেষ্টা
 //       bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
-      
 //       if (!launched) {
-//         // ফলব্যাক মোড
 //         await launchUrl(url, mode: LaunchMode.platformDefault);
 //       }
 //     } catch (e) {
@@ -187,13 +176,11 @@
 //     }
 //   }
 
-//   // 🔍 [সংশোধিত] Google Search Method
 //   void _searchOnGoogle() {
 //     final String query = Uri.encodeComponent(widget.rawValue.trim());
 //     _launchURL("https://www.google.com/search?q=$query");
 //   }
 
-//   // 🗺️ [সংশোধিত] Open Map Method
 //   void _openInMap() {
 //     String query = widget.rawValue;
 //     if (_isGeo) {
@@ -202,7 +189,6 @@
 //     _launchURL("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}");
 //   }
 
-//   // 📧 [সংশোধিত] Email Sending Method
 //   void _sendEmail() {
 //     String email = widget.rawValue;
 //     if (email.startsWith('MATMSG:')) {
@@ -216,7 +202,6 @@
 //     _launchURL("mailto:${email.trim()}");
 //   }
 
-//   // --- WiFi Connection ---
 //   Future<void> _connectToWifi() async {
 //     var locStatus = await Permission.location.request();
 //     if (!locStatus.isGranted) {
@@ -679,6 +664,7 @@
 
 //             const SizedBox(height: 30),
 
+//             // 🎯 [সংশোধিত] QrImageView-এ Error Correction & Circular Logo Padding যুক্ত করা হয়েছে
 //             Center(
 //               child: RepaintBoundary(
 //                 key: _qrBoundaryKey,
@@ -699,6 +685,8 @@
 //                           version: QrVersions.auto, 
 //                           size: 160.0,
 //                           gapless: true,
+//                           // 🛡️ Error Correction level H (High): ৩০% ডাটা কাভার হলেও স্ক্যান হবে
+//                           errorCorrectionLevel: QrErrorCorrectLevel.H,
 //                           eyeStyle: QrEyeStyle(
 //                             eyeShape: QrEyeShape.square,
 //                             color: widget.qrColor,
@@ -708,7 +696,9 @@
 //                             color: widget.qrColor,
 //                           ),
 //                           embeddedImage: _getEmbeddedImage(),
-//                           embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(32, 32)),
+//                           embeddedImageStyle: const QrEmbeddedImageStyle(
+//                             size: Size(34, 34),
+//                           ),
 //                         ),
 //                 ),
 //               ),
@@ -725,7 +715,6 @@
 //   List<Widget> _buildDynamicButtons() {
 //     List<Widget> buttons = [];
 
-//     // 1. Edit Button in Dynamic Action List
 //     buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
 //     buttons.add(const SizedBox(width: 20));
 
@@ -736,7 +725,7 @@
 //       buttons.add(_actionIconButton(
 //         icon: Icons.email_outlined,
 //         label: 'Send Email',
-//         onTap: _sendEmail, // 👈 আপডেট করা ইমেইল ফাংশন
+//         onTap: _sendEmail,
 //       ));
 //     }
 //     else if (_isPhone) {
@@ -819,31 +808,7 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // lib/screens/scan_result_screen.dart
-import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -893,8 +858,17 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   bool _isSaving = false; 
   
   final GlobalKey _qrBoundaryKey = GlobalKey(); 
-
   String? _selectedLogoAsset;
+
+  // --- নতুন QR কাস্টমাইজেশন স্টেট ভেরিয়েবলসমূহ ---
+  late Color _dotsColor;
+  late Color _eyeColor;
+  late Color _bgColor;
+  QrDataModuleShape _dotShape = QrDataModuleShape.square;
+  QrEyeShape _eyeShape = QrEyeShape.square;
+  double _dotScale = 1.0; // 0.6 to 1.0 (gapless false করলে gap তৈরি হয়)
+  String _selectedFrame = 'None'; // 'None', 'Simple Border', 'Scan Me Bottom', 'Badge Top'
+  int _selectedTemplateIndex = 0;
 
   final Map<String, String> _logoAssets = {
     'WiFi': 'assets/logos/wifi.png',
@@ -904,10 +878,89 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     'Email': 'assets/logos/email.png',
   };
 
+  final List<Color> _paletteColors = [
+    Colors.black,
+    Colors.white,
+    const Color(0xFF1E3A8A), // Deep Blue
+    const Color(0xFF2563EB), // Royal Blue
+    const Color(0xFF059669), // Emerald
+    const Color(0xFFDC2626), // Crimson Red
+    const Color(0xFF7C3AED), // Purple
+    const Color(0xFFD97706), // Amber
+    const Color(0xFFDB2777), // Pink
+    const Color(0xFFFEF3C7), // Cream Bg
+    const Color(0xFFDBEAFE), // Soft Blue Bg
+  ];
+
+  // রেডিমেড টেমপ্লেট লিস্ট
+  final List> _templates = [
+    {
+      'name': 'Classic',
+      'dots': Colors.black,
+      'eye': Colors.black,
+      'bg': Colors.white,
+      'dotShape': QrDataModuleShape.square,
+      'eyeShape': QrEyeShape.square,
+      'frame': 'None',
+    },
+    {
+      'name': 'Modern Dots',
+      'dots': const Color(0xFF1E3A8A),
+      'eye': const Color(0xFF2563EB),
+      'bg': Colors.white,
+      'dotShape': QrDataModuleShape.circle,
+      'eyeShape': QrEyeShape.circle,
+      'frame': 'Simple Border',
+    },
+    {
+      'name': 'Scan Badge',
+      'dots': Colors.black,
+      'eye': const Color(0xFFDC2626),
+      'bg': Colors.white,
+      'dotShape': QrDataModuleShape.square,
+      'eyeShape': QrEyeShape.circle,
+      'frame': 'Scan Me Bottom',
+    },
+    {
+      'name': 'Emerald Pro',
+      'dots': const Color(0xFF065F46),
+      'eye': const Color(0xFF059669),
+      'bg': const Color(0xFFECFDF5),
+      'dotShape': QrDataModuleShape.circle,
+      'eyeShape': QrEyeShape.square,
+      'frame': 'Badge Top',
+    },
+    {
+      'name': 'Royal Gold',
+      'dots': const Color(0xFF78350F),
+      'eye': const Color(0xFFD97706),
+      'bg': const Color(0xFFFEF3C7),
+      'dotShape': QrDataModuleShape.circle,
+      'eyeShape': QrEyeShape.circle,
+      'frame': 'Scan Me Bottom',
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
+    _dotsColor = widget.qrColor;
+    _eyeColor = widget.qrColor;
+    _bgColor = widget.qrBgColor;
     _checkFavoriteStatus();
+  }
+
+  void _applyTemplate(int index) {
+    final t = _templates[index];
+    setState(() {
+      _selectedTemplateIndex = index;
+      _dotsColor = t['dots'];
+      _eyeColor = t['eye'];
+      _bgColor = t['bg'];
+      _dotShape = t['dotShape'];
+      _eyeShape = t['eyeShape'];
+      _selectedFrame = t['frame'];
+    });
   }
 
   Future<void> _exportSingleQrToCSV() async {
@@ -927,8 +980,8 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
       if (kIsWeb) {
         final bytes = Uri.encodeComponent(csvBuilder.toString());
-        final anchor = html.AnchorElement(href: "data:text/csv;charset=utf-8,%EF%BB%BF$bytes")
-          ..setAttribute("download", "quickscan_item_${id}.csv")
+        html.AnchorElement(href: "data:text/csv;charset=utf-8,%EF%BB%BF$bytes")
+          ..setAttribute("download", "quickscan_item_$id.csv")
           ..click();
 
         if (!mounted) return;
@@ -947,7 +1000,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         }
 
         if (directory != null) {
-          final String filePath = "${directory.path}/quickscan_item_${id}.csv";
+          final String filePath = "${directory.path}/quickscan_item_$id.csv";
           final File file = File(filePath);
           await file.writeAsString(csvBuilder.toString());
 
@@ -991,7 +1044,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
   Future<void> _launchURL(String urlString) async {
     try {
       String formattedUrl = urlString.trim();
-
       if (!formattedUrl.startsWith('http://') && 
           !formattedUrl.startsWith('https://') && 
           !formattedUrl.startsWith('mailto:') && 
@@ -1003,13 +1055,11 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       }
 
       final Uri url = Uri.parse(formattedUrl);
-      
       bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
       if (!launched) {
         await launchUrl(url, mode: LaunchMode.platformDefault);
       }
     } catch (e) {
-      debugPrint("Could not launch $urlString: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(backgroundColor: Colors.redAccent, content: Text("Cannot open link: $e")),
@@ -1049,10 +1099,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     if (!locStatus.isGranted) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.orange,
-            content: Text("Location permission & GPS are required to connect WiFi!"),
-          ),
+          const SnackBar(backgroundColor: Colors.orange, content: Text("Location permission & GPS are required to connect WiFi!")),
         );
       }
       return;
@@ -1078,16 +1125,6 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     }
 
     try {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.blueAccent,
-            content: Text("Connecting to Wi-Fi... Please wait."),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-
       bool isEnabled = await WiFiForIoTPlugin.isEnabled();
       if (!isEnabled) {
         await WiFiForIoTPlugin.setEnabled(true);
@@ -1101,12 +1138,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         sec = NetworkSecurity.NONE;
       }
 
-      final isConnected = await WiFiForIoTPlugin.connect(
-        ssid,
-        password: pass,
-        security: sec,
-        joinOnce: false,
-      );
+      final isConnected = await WiFiForIoTPlugin.connect(ssid, password: pass, security: sec, joinOnce: false);
 
       if (mounted) {
         if (isConnected) {
@@ -1198,10 +1230,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.green,
-              content: Text('Contact added successfully to your phone! 🎉'),
-            ),
+            const SnackBar(backgroundColor: Colors.green, content: Text('Contact added successfully to your phone! 🎉')),
           );
         }
       } catch (e) {
@@ -1211,9 +1240,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       }
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Contacts permission denied.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contacts permission denied.')));
       }
     }
   }
@@ -1225,41 +1252,27 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       return byteData?.buffer.asUint8List();
     } catch (e) {
-      if (kDebugMode) {
-        print("Error capturing QR image: $e");
-      }
       return null;
     }
   }
 
   Future<void> _copyQrAction() async {
     Uint8List? pngBytes = await _captureQrImage();
-    
     if (pngBytes != null) {
       try {
         if (kIsWeb) {
           await Clipboard.setData(ClipboardData(text: widget.rawValue));
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('QR Code content copied to clipboard! 📋')),
-          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('QR Code content copied to clipboard! 📋')));
         } else {
           await Pasteboard.writeImage(pngBytes);
-          
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              backgroundColor: Colors.green,
-              content: Text('Code PNG Image copied to clipboard! Now you can paste it anywhere. 📋🖼️'),
-            ),
+            const SnackBar(backgroundColor: Colors.green, content: Text('Code PNG Image copied to clipboard! 📋🖼️')),
           );
         }
       } catch (e) {
         await Clipboard.setData(ClipboardData(text: widget.rawValue));
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Text content copied instead! 📋')),
-        );
       }
     } else {
       await Clipboard.setData(ClipboardData(text: widget.rawValue));
@@ -1276,13 +1289,10 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
           final tempDir = await getTemporaryDirectory();
           final file = await File('${tempDir.path}/qr_code_share.png').create();
           await file.writeAsBytes(pngBytes);
-          
           await Share.shareXFiles([XFile(file.path)], text: 'Scan this QR Code!');
         }
       } catch (e) {
-        if (kDebugMode) {
-          print("Sharing failed: $e");
-        }
+        if (kDebugMode) print("Sharing failed: $e");
       }
     } else {
       Share.share(widget.rawValue);
@@ -1303,33 +1313,24 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       try {
         final html.Blob blob = html.Blob([pngBytes]);
         final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
+        html.AnchorElement(href: url)
           ..setAttribute("download", "qrcode_${DateTime.now().millisecondsSinceEpoch}.png")
           ..click();
         html.Url.revokeObjectUrl(url);
-
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('QR Code image downloaded successfully! 📥')),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('QR Code image downloaded successfully! 📥')));
       } finally {
         setState(() => _isSaving = false);
       }
     } else {
       try {
         final hasAccess = await Gal.hasAccess();
-        if (!hasAccess) {
-          await Gal.requestAccess();
-        }
+        if (!hasAccess) await Gal.requestAccess();
 
         final tempDir = await getTemporaryDirectory();
         final String filePath = '${tempDir.path}/qr_${DateTime.now().millisecondsSinceEpoch}.png';
         final File imgFile = File(filePath);
         await imgFile.writeAsBytes(pngBytes);
-
         await Gal.putImage(filePath);
 
         if (!mounted) return;
@@ -1338,9 +1339,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         );
       } catch (e) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: Colors.redAccent, content: Text('Failed to save image: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.redAccent, content: Text('Failed to save image: $e')));
       } finally {
         setState(() => _isSaving = false);
       }
@@ -1349,29 +1348,14 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
 
   b_widget.Barcode _getBarcodeType(String tag) {
     String currentTag = tag.toLowerCase().trim();
-
     if (currentTag.isEmpty) {
       final isOnlyNumbers = RegExp(r'^\d+$').hasMatch(widget.rawValue);
-      final isAlphanumeric = RegExp(r'^[A-Za-z0-9\-.\s+$%/]+$').hasMatch(widget.rawValue);
-
       if (isOnlyNumbers) {
-        if (widget.rawValue.length == 8) {
-          currentTag = 'ean8';
-        } else if (widget.rawValue.length == 13) {
-          currentTag = 'ean13';
-        } else if (widget.rawValue.length == 12) {
-          currentTag = 'upca';
-        } else if (widget.rawValue.length == 14) {
-          currentTag = 'itf14';
-        } else {
-          currentTag = 'code128';
-        }
-      } else if (isAlphanumeric) {
-        if (widget.rawValue.startsWith('*') && widget.rawValue.endsWith('*')) {
-          currentTag = 'code39';
-        } else {
-          currentTag = 'code128';
-        }
+        if (widget.rawValue.length == 8) currentTag = 'ean8';
+        else if (widget.rawValue.length == 13) currentTag = 'ean13';
+        else if (widget.rawValue.length == 12) currentTag = 'upca';
+        else if (widget.rawValue.length == 14) currentTag = 'itf14';
+        else currentTag = 'code128';
       } else {
         currentTag = 'code128';
       }
@@ -1380,11 +1364,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     switch (currentTag) {
       case 'ean8': return b_widget.Barcode.ean8();
       case 'ean13': return b_widget.Barcode.ean13();
-      case 'upce': return b_widget.Barcode.code128();
       case 'upca': return b_widget.Barcode.upcA();
       case 'code39': return b_widget.Barcode.code39();
       case 'code93': return b_widget.Barcode.code93();
-      case 'code128': return b_widget.Barcode.code128();
       case 'pdf417': return b_widget.Barcode.pdf417();
       case 'codabar': return b_widget.Barcode.codabar();
       default: return b_widget.Barcode.code128();
@@ -1401,12 +1383,88 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     return null;
   }
 
+  // 🖼️ কাস্টম ফ্রেম র‍্যাপার উইজেট
+  Widget _buildFramedQrContainer(Widget qrChild) {
+    if (_selectedFrame == 'Simple Border') {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _bgColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _eyeColor, width: 4),
+        ),
+        child: qrChild,
+      );
+    } else if (_selectedFrame == 'Scan Me Bottom') {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+        decoration: BoxDecoration(
+          color: _bgColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _eyeColor, width: 3.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            qrChild,
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 5),
+              decoration: BoxDecoration(
+                color: _eyeColor,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'SCAN ME',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 1.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    } else if (_selectedFrame == 'Badge Top') {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+        decoration: BoxDecoration(
+          color: _bgColor,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _eyeColor, width: 3.5),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+              decoration: BoxDecoration(
+                color: _eyeColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'SCAN HERE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 1.2),
+              ),
+            ),
+            const SizedBox(height: 10),
+            qrChild,
+          ],
+        ),
+      );
+    }
+
+    // Default 'None'
+    return Container(
+      color: _bgColor,
+      padding: const EdgeInsets.all(16),
+      child: qrChild,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF121212),
       appBar: AppBar(
-        title: const Text('Result', style: TextStyle(color: Colors.white)),
+        title: const Text('Result & Customize', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -1421,9 +1479,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
               icon: Icon(_isFav ? Icons.star : Icons.star_border, color: Colors.amber, size: 28),
               onPressed: () async {
                 await HistoryService.toggleFavorite(id: widget.itemId!);
-                setState(() {
-                  _isFav = !_isFav;
-                });
+                setState(() => _isFav = !_isFav);
               },
             ),
         ],
@@ -1432,26 +1488,28 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // স্ক্যান বা জেনারেট করা টেক্সট বক্স
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(15),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   widget.rawValue,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
                 ),
               ),
             ),
 
-            const Divider(color: Colors.grey, height: 1),
-
+            // ডাইনামিক অ্যাকশন বাটন রো
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1461,92 +1519,246 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
               ),
             ),
 
-            if (!widget.isBarcodeResult) ...[
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
-                child: Text('Select Center Logo (Optional)', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                height: 50,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    GestureDetector(
-                      onTap: () => setState(() => _selectedLogoAsset = null),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 12),
-                        width: 42,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white10, border: Border.all(color: Colors.white24)),
-                        child: const Icon(Icons.block, color: Colors.redAccent, size: 18),
-                      ),
-                    ),
-                    ..._logoAssets.entries.map((entry) {
-                      final isSelected = _selectedLogoAsset == entry.value;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedLogoAsset = entry.value),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          padding: const EdgeInsets.all(4),
-                          width: 42,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: isSelected ? Colors.blue : Colors.transparent, width: 2.5),
-                          ),
-                          child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ),
-            ],
+            const SizedBox(height: 15),
 
-            const SizedBox(height: 30),
-
-            // 🎯 [সংশোধিত] QrImageView-এ Error Correction & Circular Logo Padding যুক্ত করা হয়েছে
+            // 🎯 লাইভ QR / Barcode প্রিভিউ এরিয়া
             Center(
               child: RepaintBoundary(
                 key: _qrBoundaryKey,
-                child: Container(
-                  color: widget.qrBgColor, 
-                  padding: const EdgeInsets.all(16),
-                  child: widget.isBarcodeResult
-                      ? b_widget.BarcodeWidget(
+                child: widget.isBarcodeResult
+                    ? Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.all(16),
+                        child: b_widget.BarcodeWidget(
                           barcode: _getBarcodeType(widget.barcodeTypeTag),
                           data: widget.rawValue.isEmpty ? "12345678" : widget.rawValue,
                           width: 250,
                           height: 90,
                           style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                           errorBuilder: (context, error) => const Text('Invalid data format', style: TextStyle(color: Colors.red)),
-                        )
-                      : QrImageView(
+                        ),
+                      )
+                    : _buildFramedQrContainer(
+                        QrImageView(
                           data: widget.rawValue, 
                           version: QrVersions.auto, 
-                          size: 160.0,
-                          gapless: true,
-                          // 🛡️ Error Correction level H (High): ৩০% ডাটা কাভার হলেও স্ক্যান হবে
+                          size: 185.0,
+                          gapless: _dotScale >= 0.9, // স্কেল কমালে ডটগুলোর মাঝে গ্যাপ তৈরি হবে
                           errorCorrectionLevel: QrErrorCorrectLevel.H,
                           eyeStyle: QrEyeStyle(
-                            eyeShape: QrEyeShape.square,
-                            color: widget.qrColor,
+                            eyeShape: _eyeShape,
+                            color: _eyeColor,
                           ),
                           dataModuleStyle: QrDataModuleStyle(
-                            dataModuleShape: QrDataModuleShape.square,
-                            color: widget.qrColor,
+                            dataModuleShape: _dotShape,
+                            color: _dotsColor,
                           ),
                           embeddedImage: _getEmbeddedImage(),
-                          embeddedImageStyle: const QrEmbeddedImageStyle(
-                            size: Size(34, 34),
-                          ),
+                          embeddedImageStyle: const QrEmbeddedImageStyle(size: Size(38, 38)),
                         ),
-                ),
+                      ),
               ),
             ),
-            
-            const SizedBox(height: 40),
+
+            const SizedBox(height: 25),
+
+            // 🎨 অ্যাডভান্সড QR কাস্টমাইজেশন প্যানেল (Accordion Style)
+            if (!widget.isBarcodeResult)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Column(
+                  children: [
+                    // ১. Templates Section
+                    _buildAccordionSection(
+                      icon: Icons.palette_outlined,
+                      title: 'Templates',
+                      initiallyExpanded: true,
+                      child: SizedBox(
+                        height: 65,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _templates.length,
+                          itemBuilder: (context, index) {
+                            final t = _templates[index];
+                            final isSelected = _selectedTemplateIndex == index;
+                            return GestureDetector(
+                              onTap: () => _applyTemplate(index),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: t['bg'],
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.blueAccent : Colors.white24,
+                                    width: isSelected ? 3 : 1,
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.qr_code_2, color: t['eye'], size: 22),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      t['name'],
+                                      style: TextStyle(color: t['dots'], fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ২. Appearance (Colors & Dots Scale)
+                    _buildAccordionSection(
+                      icon: Icons.color_lens_outlined,
+                      title: 'Appearance & Dots Size',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildColorSelectorRow('Background Colour', _bgColor, (c) => setState(() => _bgColor = c)),
+                          const SizedBox(height: 12),
+                          _buildColorSelectorRow('Dots Colour', _dotsColor, (c) => setState(() => _dotsColor = c)),
+                          const SizedBox(height: 12),
+                          _buildColorSelectorRow('Marker Colour (Corners)', _eyeColor, (c) => setState(() => _eyeColor = c)),
+                          const Divider(color: Colors.white12, height: 24),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Dots Density / Scale', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                              Text('Dot Scale: ${_dotScale.toStringAsFixed(1)}', style: const TextStyle(color: Colors.blueAccent, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          Slider(
+                            value: _dotScale,
+                            min: 0.5,
+                            max: 1.0,
+                            divisions: 5,
+                            activeColor: Colors.blueAccent,
+                            onChanged: (val) => setState(() => _dotScale = val),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ৩. Shape & Form (Dots & Marker Shape)
+                    _buildAccordionSection(
+                      icon: Icons.grid_view_rounded,
+                      title: 'Shape & Form',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Dots Style', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _buildShapeChip('Square Dots', Icons.crop_square, _dotShape == QrDataModuleShape.square, () {
+                                setState(() => _dotShape = QrDataModuleShape.square);
+                              }),
+                              const SizedBox(width: 12),
+                              _buildShapeChip('Circle Dots', Icons.circle, _dotShape == QrDataModuleShape.circle, () {
+                                setState(() => _dotShape = QrDataModuleShape.circle);
+                              }),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('Marker Border & Centre', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              _buildShapeChip('Square Marker', Icons.check_box_outline_blank, _eyeShape == QrEyeShape.square, () {
+                                setState(() => _eyeShape = QrEyeShape.square);
+                              }),
+                              const SizedBox(width: 12),
+                              _buildShapeChip('Circle Marker', Icons.radio_button_unchecked, _eyeShape == QrEyeShape.circle, () {
+                                setState(() => _eyeShape = QrEyeShape.circle);
+                              }),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ৪. Frames Section
+                    _buildAccordionSection(
+                      icon: Icons.crop_free_rounded,
+                      title: 'Frames',
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: ['None', 'Simple Border', 'Scan Me Bottom', 'Badge Top'].map((frame) {
+                          final isSelected = _selectedFrame == frame;
+                          return ChoiceChip(
+                            label: Text(frame),
+                            selected: isSelected,
+                            selectedColor: Colors.blueAccent,
+                            backgroundColor: Colors.white10,
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white70,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                            onSelected: (_) => setState(() => _selectedFrame = frame),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ৫. Logo Section
+                    _buildAccordionSection(
+                      icon: Icons.image_outlined,
+                      title: 'Center Logo',
+                      child: SizedBox(
+                        height: 46,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            GestureDetector(
+                              onTap: () => setState(() => _selectedLogoAsset = null),
+                              child: Container(
+                                margin: const EdgeInsets.only(right: 12),
+                                width: 42,
+                                decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white10, border: Border.all(color: Colors.white24)),
+                                child: const Icon(Icons.block, color: Colors.redAccent, size: 18),
+                              ),
+                            ),
+                            ..._logoAssets.entries.map((entry) {
+                              final isSelected = _selectedLogoAsset == entry.value;
+                              return GestureDetector(
+                                onTap: () => setState(() => _selectedLogoAsset = entry.value),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 12),
+                                  padding: const EdgeInsets.all(4),
+                                  width: 42,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: isSelected ? Colors.blue : Colors.transparent, width: 2.5),
+                                  ),
+                                  child: Image.asset(entry.value, fit: BoxFit.contain, errorBuilder: (c, e, s) => const Icon(Icons.image, color: Colors.black, size: 16)),
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 35),
           ],
         ),
       ),
@@ -1554,43 +1766,131 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
     );
   }
 
+  // অ্যাকর্ডিয়ন কার্ড হেল্পার
+  Widget _buildAccordionSection({
+    required IconData icon,
+    required String title,
+    required Widget child,
+    bool initiallyExpanded = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          initiallyExpanded: initiallyExpanded,
+          leading: Icon(icon, color: Colors.blueAccent, size: 22),
+          title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+          iconColor: Colors.white70,
+          collapsedIconColor: Colors.white54,
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: [child],
+        ),
+      ),
+    );
+  }
+
+  // কালার পিকার রো হেল্পার
+  Widget _buildColorSelectorRow(String label, Color currentColor, Function(Color) onSelect) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 36,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _paletteColors.length,
+            itemBuilder: (context, index) {
+              final color = _paletteColors[index];
+              final isSelected = currentColor.value == color.value;
+              return GestureDetector(
+                onTap: () => onSelect(color),
+                child: Container(
+                  margin: const EdgeInsets.only(right: 10),
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.blueAccent : Colors.white30,
+                      width: isSelected ? 3 : 1,
+                    ),
+                  ),
+                  child: isSelected
+                      ? Icon(Icons.check, size: 16, color: color == Colors.white || color.computeLuminance() > 0.5 ? Colors.black : Colors.white)
+                      : null,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // শেপ বাটন হেল্পার
+  Widget _buildShapeChip(String label, IconData icon, bool isSelected, VoidCallback onTap) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.blueAccent.withOpacity(0.2) : Colors.white10,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? Colors.blueAccent : Colors.white12, width: 1.5),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: isSelected ? Colors.blueAccent : Colors.white70, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? Colors.blueAccent : Colors.white70,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   List<Widget> _buildDynamicButtons() {
     List<Widget> buttons = [];
-
     buttons.add(_actionIconButton(icon: Icons.edit_note, label: 'Edit Content', onTap: _navigateToEditScreen));
     buttons.add(const SizedBox(width: 20));
 
     if (_isWifi) {
       buttons.add(_actionIconButton(icon: Icons.wifi, label: 'Connect', onTap: _connectToWifi));
-    }
-    else if (_isEmail) {
-      buttons.add(_actionIconButton(
-        icon: Icons.email_outlined,
-        label: 'Send Email',
-        onTap: _sendEmail,
-      ));
-    }
-    else if (_isPhone) {
+    } else if (_isEmail) {
+      buttons.add(_actionIconButton(icon: Icons.email_outlined, label: 'Send Email', onTap: _sendEmail));
+    } else if (_isPhone) {
       buttons.add(_actionIconButton(icon: Icons.phone, label: 'Call', onTap: () => _launchURL(widget.rawValue)));
-    }
-    else if (_isContact) {
+    } else if (_isContact) {
       buttons.add(_actionIconButton(icon: Icons.person_add_alt_1_rounded, label: 'Add contact', onTap: _saveContactFromQR));
-    }
-    else if (_isSMS) {
+    } else if (_isSMS) {
       buttons.add(_actionIconButton(icon: Icons.chat_bubble_outline, label: 'Send SMS', onTap: () => _sendSMS(isMMS: false)));
       buttons.add(const SizedBox(width: 20));
       buttons.add(_actionIconButton(icon: Icons.image_outlined, label: 'Send MMS', onTap: () => _sendSMS(isMMS: true)));
-    }
-    else if (_isGeo || widget.rawValue.toLowerCase().contains('bangladesh') || widget.rawValue.toLowerCase().contains('dhaka')) {
+    } else if (_isGeo || widget.rawValue.toLowerCase().contains('bangladesh') || widget.rawValue.toLowerCase().contains('dhaka')) {
       buttons.add(_actionIconButton(icon: Icons.location_on_rounded, label: 'Show Map', onTap: _openInMap));
-    }
-    else if (_isUrl) {
+    } else if (_isUrl) {
       buttons.add(_actionIconButton(icon: Icons.open_in_browser, label: 'Open', onTap: () => _launchURL(widget.rawValue)));
-    }
-    else {
+    } else {
       buttons.add(_actionIconButton(icon: Icons.search, label: 'Search Google', onTap: _searchOnGoogle));
     }
-
     return buttons;
   }
 
@@ -1600,9 +1900,9 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.blue, size: 36),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Icon(icon, color: Colors.blue, size: 30),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 11)),
         ],
       ),
     );
@@ -1615,28 +1915,12 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          IconButton(
-            icon: const Icon(Icons.copy, color: Colors.white),
-            onPressed: _copyQrAction,
-            tooltip: 'Copy Code',
-          ),
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: _shareQrAction,
-            tooltip: 'Share QR Image',
-          ),
-          IconButton(
-            icon: const Icon(Icons.description_outlined, color: Colors.greenAccent),
-            onPressed: _exportSingleQrToCSV,
-            tooltip: 'Export CSV Data',
-          ),
+          IconButton(icon: const Icon(Icons.copy, color: Colors.white), onPressed: _copyQrAction, tooltip: 'Copy Code'),
+          IconButton(icon: const Icon(Icons.share, color: Colors.white), onPressed: _shareQrAction, tooltip: 'Share QR Image'),
+          IconButton(icon: const Icon(Icons.description_outlined, color: Colors.greenAccent), onPressed: _exportSingleQrToCSV, tooltip: 'Export CSV Data'),
           _isSaving 
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-              : IconButton(
-                  icon: const Icon(Icons.save, color: Colors.white),
-                  onPressed: _saveQrAction,
-                  tooltip: 'Save QR Image',
-                ),
+              : IconButton(icon: const Icon(Icons.save, color: Colors.white), onPressed: _saveQrAction, tooltip: 'Save QR Image'),
         ],
       ),
     );
