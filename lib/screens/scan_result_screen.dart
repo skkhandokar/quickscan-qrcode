@@ -1129,7 +1129,7 @@ class _ScanResultScreenState extends State<ScanResultScreen> {
             itemCount: _paletteColors.length,
             itemBuilder: (context, index) {
               final color = _paletteColors[index];
-              final isSelected = currentColor.toARGB32() == color.toARGB32();
+              final isSelected = currentColor.value == color.value;
               return GestureDetector(
                 onTap: () => onSelect(color),
                 child: Container(
