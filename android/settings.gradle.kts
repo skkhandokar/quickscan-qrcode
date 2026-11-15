@@ -19,8 +19,8 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.5.2" apply false
-   id("org.jetbrains.kotlin.android") version "2.1.20" apply false// 👈 কোটলিন ভার্সন 2.1.20 থেকে কমিয়ে 1.9.24 করুন
+    id("com.android.application") version "8.3.2" apply false
+    id("org.jetbrains.kotlin.android") version "1.9.24" apply false
 }
 
 include(":app")
