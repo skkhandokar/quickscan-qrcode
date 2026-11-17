@@ -106,13 +106,13 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
   String _generateVCardData() {
     return "BEGIN:VCARD\n"
         "VERSION:3.0\n"
-        "FN:${_profileData['name']}\n"
-        "ORG:${_profileData['org']}\n"
-        "ADR;TYPE=WORK:;;${_profileData['address']};;;;\n"
-        "TEL;TYPE=CELL:${_profileData['phone']}\n"
-        "EMAIL;TYPE=INTERNET:${_profileData['email']}\n"
-        "URL:${_profileData['web']}\n"
-        "NOTE:${_profileData['bio']}\n"
+        "FN:${_profileData['name'] ?? ''}\n"
+        "ORG:${_profileData['org'] ?? ''}\n"
+        "ADR;TYPE=WORK:;;${_profileData['address'] ?? ''};;;;\n"
+        "TEL;TYPE=CELL:${_profileData['phone'] ?? ''}\n"
+        "EMAIL;TYPE=INTERNET:${_profileData['email'] ?? ''}\n"
+        "URL:${_profileData['web'] ?? ''}\n"
+        "NOTE:${_profileData['bio'] ?? ''}\n"
         "END:VCARD";
   }
 
@@ -133,7 +133,6 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
           addresses: _profileData['address'] != null && _profileData['address']!.isNotEmpty
               ? [fc.Address(street: _profileData['address']!, label: fc.Label(fc.AddressLabel.work))]
               : [],
-          // v2 কনস্ট্রাক্টরের সঠিক প্যারামিটার 'name' সেট করা হলো
           organizations: _profileData['org'] != null && _profileData['org']!.isNotEmpty
               ? [fc.Organization(name: _profileData['org']!)] 
               : [],
@@ -203,13 +202,13 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
 
   void _copyProfile() {
     final String profileText = "My Profile Details:\n"
-        "Name: ${_profileData['name']}\n"
-        "Company: ${_profileData['org']}\n"
-        "Address: ${_profileData['address']}\n"
-        "Phone: ${_profileData['phone']}\n"
-        "Email: ${_profileData['email']}\n"
-        "Website: ${_profileData['web']}\n"
-        "Bio: ${_profileData['bio']}";
+        "Name: ${_profileData['name'] ?? ''}\n"
+        "Company: ${_profileData['org'] ?? ''}\n"
+        "Address: ${_profileData['address'] ?? ''}\n"
+        "Phone: ${_profileData['phone'] ?? ''}\n"
+        "Email: ${_profileData['email'] ?? ''}\n"
+        "Website: ${_profileData['web'] ?? ''}\n"
+        "Bio: ${_profileData['bio'] ?? ''}";
     Clipboard.setData(ClipboardData(text: profileText));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Profile details copied to clipboard!')),
@@ -226,12 +225,12 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
 
   void _shareProfile() {
     final String shareText = "My Digital Profile:\n"
-        "Name: ${_profileData['name']}\n"
-        "Company: ${_profileData['org']}\n"
-        "Phone: ${_profileData['phone']}\n"
-        "Email: ${_profileData['email']}\n"
-        "Website: ${_profileData['web']}\n"
-        "Bio: ${_profileData['bio']}";
+        "Name: ${_profileData['name'] ?? ''}\n"
+        "Company: ${_profileData['org'] ?? ''}\n"
+        "Phone: ${_profileData['phone'] ?? ''}\n"
+        "Email: ${_profileData['email'] ?? ''}\n"
+        "Website: ${_profileData['web'] ?? ''}\n"
+        "Bio: ${_profileData['bio'] ?? ''}";
     Share.share(shareText);
   }
 
@@ -373,15 +372,15 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
             _profileData['name'] ?? '',
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
           ),
-          if (_profileData['org']!.isNotEmpty)
+          if (_profileData['org'] != null && _profileData['org']!.isNotEmpty)
             Text(_profileData['org']!, style: const TextStyle(fontSize: 18, color: Colors.white70)),
-          if (_profileData['address']!.isNotEmpty)
+          if (_profileData['address'] != null && _profileData['address']!.isNotEmpty)
             Text(_profileData['address']!, style: const TextStyle(fontSize: 16, color: Colors.white54)),
-          if (_profileData['phone']!.isNotEmpty)
+          if (_profileData['phone'] != null && _profileData['phone']!.isNotEmpty)
             Text(_profileData['phone']!, style: const TextStyle(fontSize: 16, color: Colors.white54)),
-          if (_profileData['email']!.isNotEmpty)
+          if (_profileData['email'] != null && _profileData['email']!.isNotEmpty)
             Text(_profileData['email']!, style: const TextStyle(fontSize: 16, color: Colors.white54)),
-          if (_profileData['bio']!.isNotEmpty)
+          if (_profileData['bio'] != null && _profileData['bio']!.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 5.0),
               child: Text(_profileData['bio']!, style: const TextStyle(fontSize: 15, color: Colors.white38, fontStyle: FontStyle.italic)),
@@ -394,22 +393,22 @@ class _MyQRCodeScreenState extends State<MyQRCodeScreen> {
               _cardActionItem(
                 icon: Icons.person_add_alt_1_rounded,
                 label: 'Add contact',
-                onTap: _profileData['name']!.isNotEmpty ? _addContact : null,
+                onTap: (_profileData['name'] != null && _profileData['name']!.isNotEmpty) ? _addContact : null,
               ),
               _cardActionItem(
                 icon: Icons.location_on_rounded,
                 label: 'Show map',
-                onTap: _profileData['address']!.isNotEmpty ? _openMap : null,
+                onTap: (_profileData['address'] != null && _profileData['address']!.isNotEmpty) ? _openMap : null,
               ),
               _cardActionItem(
                 icon: Icons.phone_in_talk_rounded,
                 label: 'Call',
-                onTap: _profileData['phone']!.isNotEmpty ? _makeCall : null,
+                onTap: (_profileData['phone'] != null && _profileData['phone']!.isNotEmpty) ? _makeCall : null,
               ),
               _cardActionItem(
                 icon: Icons.mail_rounded,
                 label: 'Send email',
-                onTap: _profileData['email']!.isNotEmpty ? _sendEmail : null,
+                onTap: (_profileData['email'] != null && _profileData['email']!.isNotEmpty) ? _sendEmail : null,
               ),
             ],
           ),
