@@ -1,3 +1,7 @@
+import java.io.FileInputStream
+import java.io.File
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -14,7 +18,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    // 💡 সঠিক ও লেটেস্ট কটলিন কম্পাইলার অপশন (এটি নিশ্চিত করুন)
     kotlin {
         compilerOptions {
             jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
@@ -29,8 +32,8 @@ android {
             val propFile = if (keystorePropertiesFile.exists()) keystorePropertiesFile else altKeystoreFile
             
             if (propFile.exists()) {
-                val properties = java.util.Properties()
-                properties.load(java.io.FileInputStream(propFile))
+                val properties = Properties()
+                properties.load(FileInputStream(propFile))
                 
                 keyAlias = properties.getProperty("keyAlias")
                 keyPassword = properties.getProperty("keyPassword")
