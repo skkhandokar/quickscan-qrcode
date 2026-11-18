@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "com.skkhandokar.quickscan"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = "28.2.13676358"
+    
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
