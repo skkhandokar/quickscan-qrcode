@@ -1,20 +1,7 @@
-import java.io.FileInputStream
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-val keystoreProperties = Properties()
-val keyPropsFileInAndroid = rootProject.file("android/key.properties")
-val keyPropsFileInRoot = rootProject.file("key.properties")
-
-if (keyPropsFileInAndroid.exists()) {
-    keystoreProperties.load(FileInputStream(keyPropsFileInAndroid))
-} else if (keyPropsFileInRoot.exists()) {
-    keystoreProperties.load(FileInputStream(keyPropsFileInRoot))
 }
 
 android {
@@ -27,24 +14,38 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    // 💡 সঠিক ও লেটেস্ট কটলিন কম্পাইলার অপশন (এটি নিশ্চিত করুন)
     kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
-}
 
     signingConfigs {
         create("release") {
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
+            val keystorePropertiesFile = rootProject.file("android/key.properties")
+            val altKeystoreFile = rootProject.file("key.properties")
             
-            storeFile = keystoreProperties.getProperty("storeFile")?.let { fileName ->
-                val fileInAndroid = rootProject.file("android/$fileName")
-                val fileInRoot = rootProject.file(fileName)
-                if (fileInAndroid.exists()) fileInAndroid else fileInRoot
+            val propFile = if (keystorePropertiesFile.exists()) keystorePropertiesFile else altKeystoreFile
+            
+            if (propFile.exists()) {
+                val properties = java.util.Properties()
+                properties.load(java.io.FileInputStream(propFile))
+                
+                keyAlias = properties.getProperty("keyAlias")
+                keyPassword = properties.getProperty("keyPassword")
+                storePassword = properties.getProperty("storePassword")
+                
+                val storeFileName = properties.getProperty("storeFile") ?: "quickscan-release-key.jks"
+                val fileInAndroid = rootProject.file("android/$storeFileName")
+                val fileInRoot = rootProject.file(storeFileName)
+                
+                if (fileInAndroid.exists()) {
+                    storeFile = fileInAndroid
+                } else if (fileInRoot.exists()) {
+                    storeFile = fileInRoot
+                }
             }
-            
-            storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
 
@@ -61,8 +62,6 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName("release")
-            
-            // রিলিজ ক্র্যাশ রোধ করতে class/resource shrink রাখা হয়েছে false
             isMinifyEnabled = false
             isShrinkResources = false
 
