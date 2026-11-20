@@ -19,8 +19,7 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.7.0" apply false // 👈 AGP সংস্করণ 8.7.0 করা হলো
-    id("org.jetbrains.kotlin.android") version "2.1.20" apply false
+    id("com.android.application") version "9.2.1" apply false // 👈 AGP সংস্করণ 9.2.1 করা হলো
+    id("org.jetbrains.kotlin.android") version "2.2.10" apply false
 }
-
 include(":app")
